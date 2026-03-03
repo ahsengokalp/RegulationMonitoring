@@ -16,6 +16,9 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
+    ollama_base_url: str = Field("http://localhost:11434", alias="OLLAMA_BASE_URL")
+    ollama_model: str = Field("qwen2.5:14b", alias="OLLAMA_MODEL")
+
     smtp_host: str = Field(..., alias="SMTP_HOST")
     smtp_port: int = Field(587, alias="SMTP_PORT")
     smtp_user: str = Field(..., alias="SMTP_USER")

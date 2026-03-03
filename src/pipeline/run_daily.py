@@ -1,71 +1,246 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import date
-from typing import List
+from time import sleep
+from typing import Dict, List, Tuple
 
 from src.app.config import get_settings
 from src.core.http import build_session
-from src.gazette.client import fetch_daily_html, daily_index_url
+from src.core.models import GazetteItem
+from src.gazette.client import daily_index_url, fetch_daily_html
+from src.gazette.detail_text import fetch_detail_text
 from src.gazette.parser import parse_daily_items
+from src.llm.ollama_client import MultiDeptDecision, OllamaClient
 from src.notify.emailer import send_html_email
 from src.notify.templates import build_generic_email_html, build_generic_email_subject
+from src.policies.base import DepartmentPolicy, PolicyDecision
+from src.policies.common_negative_rules import NEGATIVE_RULES
+from src.policies.factory_signals import has_factory_override
 from src.policies.ik import IkPolicy
+from src.policies.isg import IsgPolicy
 from src.policies.lojistik import LojistikPolicy
 from src.policies.muhasebe import MuhasebePolicy
-from src.policies.base import DepartmentPolicy
-from src.policies.isg import IsgPolicy
+from src.policies.negative_filter import apply_negative_rules
+from src.policies.utils import build_haystack, is_excluded_section, is_ilan_url
+
+REQUEST_DELAY_SECONDS = 0.35
 
 
-def run(day: date, policies: List[DepartmentPolicy]) -> None:
+@dataclass(frozen=True)
+class CandidateDecision:
+    """
+    LLM'e gidecek mi / skip mi?
+    """
+
+    status: str  # "SKIP_ILAN" | "SKIP_NEG_HARD" | "CANDIDATE_LLM"
+    neg_penalty: int = 0
+    neg_reasons: Tuple[str, ...] = ()
+    override_factory: bool = False
+
+
+@dataclass(frozen=True)
+class PolicyHit:
+    item: GazetteItem
+    decision: PolicyDecision
+    llm: MultiDeptDecision
+
+
+def decide_candidate(item: GazetteItem) -> CandidateDecision:
+    # 1) ILAN bolumu ise direkt skip
+    if is_excluded_section(item):
+        return CandidateDecision(status="SKIP_ILAN")
+
+    haystack = build_haystack(item)
+
+    # 2) Negatif kurallar
+    neg_penalty, neg_reasons, hard_excluded = apply_negative_rules(haystack, NEGATIVE_RULES)
+    override = has_factory_override(haystack)
+
+    # 3) Hard negatif + override yoksa skip
+    if hard_excluded and not override:
+        return CandidateDecision(
+            status="SKIP_NEG_HARD",
+            neg_penalty=neg_penalty,
+            neg_reasons=tuple(neg_reasons),
+            override_factory=False,
+        )
+
+    # 4) Geri kalan herkes LLM aday
+    return CandidateDecision(
+        status="CANDIDATE_LLM",
+        neg_penalty=neg_penalty,
+        neg_reasons=tuple(neg_reasons),
+        override_factory=override,
+    )
+
+
+def collect_daily_hits(
+    day: date,
+    policies: List[DepartmentPolicy],
+) -> Tuple[List[GazetteItem], Dict[str, CandidateDecision], Dict[str, List[PolicyHit]]]:
     session = build_session()  # http session hazirlar
 
     html = fetch_daily_html(session=session, day=day)
     # html i madde listesine cevirir
     items = parse_daily_items(html=html, base_url=daily_index_url(day))
 
-    print(f"[INFO] items found: {len(items)}")
+    candidate_map: Dict[str, CandidateDecision] = {}
+    for it in items:
+        candidate_map[it.url] = decide_candidate(it)
 
     settings = get_settings()
-    recipients_map = {
-        "isg": settings.isg_recipients,
-        "ik": settings.ik_recipients,
-        "muhasebe": settings.muhasebe_recipients,
-        "lojistik": settings.lojistik_recipients,
-    }
+    ollama = OllamaClient(
+        base_url=settings.ollama_base_url,
+        model=settings.ollama_model,
+    )
 
-    for pol in policies:
-        hits = []
-        for item in items:
-            decision = pol.evaluate_title(item)
-            if decision.is_relevant:
-                hits.append(item)
+    policy_map: Dict[str, DepartmentPolicy] = {pol.name: pol for pol in policies}
 
-        print(f"\n=== Department: {pol.name} | hits: {len(hits)} ===")
-        for item in hits[:20]:
-            print(f"- {item.title}")
+    text_cache: Dict[str, str] = {}
+    llm_cache: Dict[str, MultiDeptDecision] = {}
+    printed_debug: set[str] = set()
+    hits_by_policy: Dict[str, List[PolicyHit]] = {pol.name: [] for pol in policies}
+
+    for item in items:
+        if is_ilan_url(item.url):
+            continue
+
+        cand = candidate_map[item.url]
+        if cand.status != "CANDIDATE_LLM":
+            continue
+
+        text = text_cache.get(item.url)
+        if text is None:
+            # Soft throttle to avoid hitting the source site too aggressively.
+            sleep(REQUEST_DELAY_SECONDS)
+            try:
+                text = fetch_detail_text(session, item.url)
+            except Exception:
+                text = ""
+            text_cache[item.url] = text
+
+        text = (text or "").strip()
+        if "20250621-18" in item.url and item.url not in printed_debug:
+            printed_debug.add(item.url)
+            print("\n[DEBUG] TARGET ITEM:", item.title)
+            print("[DEBUG] URL:", item.url)
+            print("[DEBUG] TEXT_LEN:", len(text))
+            print("[DEBUG] TEXT_HEAD:", text[:300].replace("\n", " "))
+
+        if not text:
+            continue
+
+        md = llm_cache.get(item.url)
+        if md is None:
+            try:
+                md = ollama.classify_multi(title=item.title, url=item.url, text=text[:2500])
+            except Exception:
+                continue
+            if "20250621-18" in item.url:
+                print("\n[DEBUG] LLM_RAW:", md.raw)
+                print("[DEBUG] LLM_PARSED:", md.isg, md.ik, md.muhasebe, md.lojistik, md.confidence)
+                print("[DEBUG] LLM_EVIDENCE:", md.evidence)
+            llm_cache[item.url] = md
+
+        if md.confidence < 40:
+            continue
+
+        if md.isg and "isg" in policy_map:
+            decision = policy_map["isg"].evaluate_title(item)
+            hits_by_policy["isg"].append(PolicyHit(item=item, decision=decision, llm=md))
+        if md.ik and "ik" in policy_map:
+            decision = policy_map["ik"].evaluate_title(item)
+            hits_by_policy["ik"].append(PolicyHit(item=item, decision=decision, llm=md))
+        if md.muhasebe and "muhasebe" in policy_map:
+            decision = policy_map["muhasebe"].evaluate_title(item)
+            hits_by_policy["muhasebe"].append(PolicyHit(item=item, decision=decision, llm=md))
+        if md.lojistik and "lojistik" in policy_map:
+            decision = policy_map["lojistik"].evaluate_title(item)
+            hits_by_policy["lojistik"].append(PolicyHit(item=item, decision=decision, llm=md))
+
+    return items, candidate_map, hits_by_policy
+
+
+def run(day: date, policies: List[DepartmentPolicy]) -> None:
+    settings = get_settings()
+    session = build_session()
+
+    html = fetch_daily_html(session=session, day=day)
+    items = parse_daily_items(html=html, base_url=daily_index_url(day))
+    print(f"[INFO] items found: {len(items)}")
+
+    ollama = OllamaClient(settings.ollama_base_url, settings.ollama_model)
+
+    hits_by_dept = defaultdict(list)  # dept -> list[(item, md)]
+    text_cache = {}
+    llm_cache = {}
+
+    for item in items:
+        # 1) Candidate gate
+        if is_ilan_url(item.url):
+            continue
+
+        if is_excluded_section(item):
+            continue
+
+        haystack = build_haystack(item)
+        neg_penalty, neg_reasons, hard_excluded = apply_negative_rules(haystack, NEGATIVE_RULES)
+        override = has_factory_override(haystack)
+        if hard_excluded and not override:
+            continue
+
+        # 2) Text cache
+        text = text_cache.get(item.url)
+        if text is None:
+            text = fetch_detail_text(session, item.url)
+            text_cache[item.url] = text
+        text = (text or "").strip()
+
+        # Debug hedef PDF
+        if "20250621-18" in item.url:
+            print("\n[DEBUG] TARGET ITEM:", item.title)
+            print("[DEBUG] URL:", item.url)
+            print("[DEBUG] TEXT_LEN:", len(text))
+            print("[DEBUG] TEXT_HEAD:", text[:300].replace("\n", " "))
+
+        if not text:
+            continue
+
+        # 3) LLM cache (multi-label)
+        md = llm_cache.get(item.url)
+        if md is None:
+            md = ollama.classify_multi(title=item.title, url=item.url, text=text[:2500])
+            llm_cache[item.url] = md
+
+        if "20250621-18" in item.url:
+            print("[DEBUG] LLM_RAW:", md.raw)
+            print("[DEBUG] LLM_PARSED:", md.isg, md.ik, md.muhasebe, md.lojistik, md.confidence)
+            print("[DEBUG] LLM_EVIDENCE:", md.evidence)
+
+        # 4) Confidence gate (ilk testte düşük tut)
+        if md.confidence < 40:
+            continue
+
+        if md.isg:
+            hits_by_dept["isg"].append((item, md))
+        if md.ik:
+            hits_by_dept["ik"].append((item, md))
+        if md.muhasebe:
+            hits_by_dept["muhasebe"].append((item, md))
+        if md.lojistik:
+            hits_by_dept["lojistik"].append((item, md))
+
+    # 5) Print sonuç
+    for dept in ["isg", "ik", "muhasebe", "lojistik"]:
+        hits = hits_by_dept.get(dept, [])
+        print(f"\n=== Department: {dept} | hits: {len(hits)} ===")
+        for item, md in hits[:10]:
+            print(f"- ({md.confidence}) {item.title}")
             print(f"  {item.url}")
-
-        if hits:
-            recipients = recipients_map[pol.name].split(",")
-            subject = build_generic_email_subject(pol.name, day, len(hits))
-            html_body = build_generic_email_html(pol.name, day, hits)
-
-            send_html_email(
-                smtp_host=settings.smtp_host,
-                smtp_port=settings.smtp_port,
-                smtp_user=settings.smtp_user,
-                smtp_password=settings.smtp_password,
-                smtp_secure=settings.smtp_secure,
-                smtp_auth=settings.smtp_auth,
-                smtp_tls_reject_unauthorized=settings.smtp_tls_reject_unauthorized,
-                smtp_enabled=settings.smtp_enabled,
-                mail_from=settings.mail_from,
-                recipients=recipients,
-                subject=subject,
-                html_body=html_body,
-            )
-
-            print(f"[INFO] {pol.name.upper()} email sent.")
+            if md.evidence:
+                print(f"  evidence: {md.evidence}")
 
 
 def default_policies() -> List[DepartmentPolicy]:

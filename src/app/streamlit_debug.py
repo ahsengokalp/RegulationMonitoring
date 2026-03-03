@@ -8,6 +8,7 @@ from time import perf_counter
 import traceback
 from typing import Any
 
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -20,10 +21,9 @@ from src.app.config import get_settings
 from src.core.http import build_session
 from src.core.models import GazetteItem
 from src.gazette.client import daily_index_url, fetch_daily_html
-from src.gazette.parser import parse_daily_items
 from src.notify.emailer import send_html_email
 from src.notify.templates import build_generic_email_html, build_generic_email_subject
-from src.pipeline.run_daily import default_policies
+from src.pipeline.run_daily import CandidateDecision, collect_daily_hits, default_policies
 from src.policies.base import PolicyDecision
 
 
@@ -57,13 +57,23 @@ def _settings_preview(settings: Any) -> dict[str, Any]:
     }
 
 
-def _item_to_row(item: GazetteItem) -> dict[str, str]:
-    return {
-        "title": item.title,
-        "section": item.section or "",
-        "subsection": item.subsection or "",
-        "url": item.url,
-    }
+def _items_to_df(items: list[GazetteItem], candidate_map: dict[str, CandidateDecision]) -> pd.DataFrame:
+    rows = []
+    for i in items:
+        c = candidate_map.get(i.url)
+        rows.append(
+            {
+                "title": i.title,
+                "url": i.url,
+                "section": i.section or "",
+                "subsection": i.subsection or "",
+                "candidate_status": c.status if c else "",
+                "neg_penalty": c.neg_penalty if c else 0,
+                "neg_reasons": ", ".join(c.neg_reasons) if c else "",
+                "override_factory": bool(c.override_factory) if c else False,
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def _decision_to_row(item: GazetteItem, decision: PolicyDecision) -> dict[str, Any]:
@@ -85,27 +95,23 @@ def _run_debug(day: date) -> dict[str, Any]:
 
     url = daily_index_url(day)
     html = fetch_daily_html(session=session, day=day)
-    items = parse_daily_items(html=html, base_url=url)
     policies = default_policies()
+    items, candidate_map, raw_hits_by_policy = collect_daily_hits(day=day, policies=policies)
 
     decisions_by_policy: dict[str, list[tuple[GazetteItem, PolicyDecision]]] = {}
     hits_by_policy: dict[str, list[tuple[GazetteItem, PolicyDecision]]] = {}
     item_hits: dict[str, list[str]] = defaultdict(list)
 
-    for policy in policies:
-        decisions: list[tuple[GazetteItem, PolicyDecision]] = []
-        hits: list[tuple[GazetteItem, PolicyDecision]] = []
+    for policy_name, policy_hits in raw_hits_by_policy.items():
+        decisions = [(hit.item, hit.decision) for hit in policy_hits]
+        hits = [(hit.item, hit.decision) for hit in policy_hits]
 
-        for item in items:
-            decision = policy.evaluate_title(item)
-            decisions.append((item, decision))
-            if decision.is_relevant:
-                hits.append((item, decision))
-                key = f"{item.title}|{item.url}"
-                item_hits[key].append(policy.name)
+        for item, _ in hits:
+            key = f"{item.title}|{item.url}"
+            item_hits[key].append(policy_name)
 
-        decisions_by_policy[policy.name] = decisions
-        hits_by_policy[policy.name] = hits
+        decisions_by_policy[policy_name] = decisions
+        hits_by_policy[policy_name] = hits
 
     recipients_map = {
         "isg": _split_recipients(settings.isg_recipients),
@@ -137,6 +143,7 @@ def _run_debug(day: date) -> dict[str, Any]:
         "url": url,
         "html": html,
         "items": items,
+        "candidate_map": candidate_map,
         "settings": settings,
         "settings_preview": _settings_preview(settings),
         "section_counts": section_counts,
@@ -181,6 +188,7 @@ def main() -> None:
 
     result = st.session_state["debug_result"]
     items: list[GazetteItem] = result["items"]
+    candidate_map: dict[str, CandidateDecision] = result["candidate_map"]
     hits_by_policy: dict[str, list[tuple[GazetteItem, PolicyDecision]]] = result["hits_by_policy"]
     decisions_by_policy: dict[str, list[tuple[GazetteItem, PolicyDecision]]] = result["decisions_by_policy"]
 
@@ -221,10 +229,10 @@ def main() -> None:
         st.dataframe(matrix_sorted[:row_limit], use_container_width=True, hide_index=True)
 
     with tab_items:
-        item_rows = [_item_to_row(item) for item in items]
-        st.dataframe(item_rows[:row_limit], use_container_width=True, hide_index=True)
-        if len(item_rows) > row_limit:
-            st.caption(f"Showing first {row_limit} of {len(item_rows)} items.")
+        items_df = _items_to_df(items, candidate_map)
+        st.dataframe(items_df.head(row_limit), use_container_width=True, hide_index=True)
+        if len(items_df) > row_limit:
+            st.caption(f"Showing first {row_limit} of {len(items_df)} items.")
 
     with tab_policy:
         for policy_name, decisions in decisions_by_policy.items():
