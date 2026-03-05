@@ -6,26 +6,32 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install Python and tools
+# Install Python 3.11 from deadsnakes and build tools
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
-	   python3 \
-	   python3-pip \
-	   build-essential \
+	   software-properties-common \
 	   curl \
+	   ca-certificates \
+	&& add-apt-repository ppa:deadsnakes/ppa -y \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends \
+	   python3.11 \
+	   python3.11-venv \
+	   python3.11-distutils \
+	   build-essential \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Ensure pip is the python3 pip
-RUN ln -s /usr/bin/pip3 /usr/local/bin/pip || true
+# Ensure pip for python3.11 is available
+RUN python3.11 -m ensurepip --upgrade \
+	&& python3.11 -m pip install --upgrade pip setuptools wheel
 
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy project files
+COPY pyproject.toml /app/
+COPY src /app/src
+COPY README.md /app/
 
-# Copy the application
-COPY . /app
+# Install project and dependencies
+RUN python3.11 -m pip install --no-cache-dir .
 
-# Expose the user-facing port
-EXPOSE 5048
-
-# Run Streamlit on 0.0.0.0 so the container is reachable and use port 5048
-CMD ["streamlit", "run", "main.py", "--server.port", "5048", "--server.address", "0.0.0.0"]
+# Run the hourly daemon by default (invokes the CLI internally)
+CMD ["python3.11", "-m", "src.daemon.hourly_runner"]
