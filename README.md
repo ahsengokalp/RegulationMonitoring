@@ -1,6 +1,6 @@
-﻿# factory-regulation-monitoring
+# factory-regulation-monitoring
 
-Resmî Gazete günlük içeriklerini çekip departman bazlı policy kurallarıyla filtreleyen, sonuçları e-posta olarak gönderen bir Python projesi.
+Bu proje, Resmi Gazete fihristini gunluk olarak tarar, kayitlari fabrika departmanlarina gore siniflandirir ve ilgili birimlere e-posta gonderir.
 
 Departmanlar:
 - `isg`
@@ -8,42 +8,50 @@ Departmanlar:
 - `muhasebe`
 - `lojistik`
 
-## Nasıl Çalışır
+## Ne Yapar
 
-Sistem her çalışmada bu adımları izler:
+1. Secilen gunun Resmi Gazete fihristini ceker.
+2. Maddeleri parse eder (`title`, `url`, `section`, `subsection`).
+3. LLM oncesi filtreleme uygular.
+4. Aday kayitlarin detay metnini ceker (HTML/PDF/OCR fallback).
+5. LLM ile coklu departman siniflandirmasi yapar.
+6. Guven esigi (`confidence >= 40`) altini eler.
+7. Departman bazli hit listesi olusturur.
+8. Hit olan departmanlara e-posta yollar.
+9. Tum mail sonucunu JSONL + bagimsiz HTML log ekranina yazar.
 
-1. Verilen tarihe göre Resmî Gazete URL’i üretilir.
-2. Günlük sayfanın HTML’i çekilir.
-3. HTML içinden fihrist maddeleri parse edilir (`title`, `url`, `section`, `subsection`).
-4. Her madde, her departman policy’sine göre puanlanır.
-5. Policy sonucu `is_relevant=True` olan maddeler `hit` sayılır.
-6. Her departman için hit varsa ilgili alıcılara HTML e-posta gönderilir.
+## LLM Akisi (Ozet)
 
-## Proje Yapısı
+- LLM'e her kayit gitmez.
+- Once aday kapisi calisir (`SKIP_ILAN`, `SKIP_NEG_HARD`, `CANDIDATE_LLM`).
+- Sadece `CANDIDATE_LLM` olan kayitlarin metni modele verilir.
+- Modele giden metin: `text[:2500]` (ilk 2500 karakter).
+- Model donusu: `isg/ik/muhasebe/lojistik + confidence + evidence`.
+- `confidence < 40` ise kayit departmanlara dusmez.
+
+## Proje Yapisi
 
 ```text
 src/
   app/
-    main.py              # CLI giriş noktası
-    config.py            # .env ayarları (SMTP + alıcılar)
-    streamlit_debug.py   # görsel debug ekranı
-  core/
-    models.py            # GazetteItem veri modeli
-    http.py              # requests session + retry
-  gazette/
-    client.py            # günlük URL ve HTML çekme
-    parser.py            # HTML -> GazetteItem listesi
-  policies/
-    base.py              # DepartmentPolicy ve PolicyDecision
-    isg.py
-    ik.py
-    muhasebe.py
-    lojistik.py
-  notify/
-    emailer.py           # SMTP mail gönderimi
-    templates.py         # generic HTML mail şablonları
+    main.py                # CLI giris noktasi
+    config.py              # .env ayarlari
+    streamlit_debug.py     # Streamlit debug ekrani
+    mail_log_dashboard.py  # log HTML'i manuel yeniden uretme komutu
   pipeline/
-    run_daily.py         # orchestrator (fetch/parse/evaluate/send)
+    run_daily.py           # ana orkestrasyon
+  gazette/
+    client.py              # gunluk URL ve HTML cekme
+    parser.py              # fihrist parse
+    detail_text.py         # detay metin cekme (html/pdf/ocr)
+  llm/
+    ollama_client.py       # Ollama siniflandirma istemcisi
+  notify/
+    emailer.py             # SMTP gonderimi + log event yazimi
+    mail_log.py            # logs/mail_events.jsonl + logs/mail_log_dashboard.html
+    templates.py           # e-posta HTML/subject
+  policies/
+    *.py                   # departman kurallari
 ```
 
 ## Kurulum
@@ -54,125 +62,144 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-## .env Ayarları
+## .env Ayarlari
 
-`.env.example` dosyasını kopyalayın:
+`.env.example` dosyasini kopyalayin:
 
 ```bash
 copy .env.example .env
 ```
 
-Minimum gerekli değişkenler:
+Temel alanlar:
 
 ```env
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=xxx@gmail.com
 SMTP_PASSWORD=xxxx
-MAIL_FROM=xxx@gmail.com
+SMTP_SECURE=true
+SMTP_AUTH=true
+SMTP_TLS_REJECT_UNAUTHORIZED=true
+SMTP_ENABLED=true
+
+MAIL_FROM=Toolbox <docker@dikkan.com>
 
 ISG_RECIPIENTS=isg1@company.com,isg2@company.com
 IK_RECIPIENTS=ik1@company.com,ik2@company.com
 MUHASEBE_RECIPIENTS=muh1@company.com,muh2@company.com
 LOJISTIK_RECIPIENTS=loj1@company.com,loj2@company.com
+
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:14b
 ```
 
-Notlar:
-- Gmail kullanıyorsanız App Password gerekir (2FA açık olmalı).
-- Kurumsalda genelde Exchange / Office365 SMTP kullanılır.
-- `.env` dosyası BOM içeriyorsa config tarafı `utf-8-sig` ile okuyacak şekilde ayarlıdır.
+## Terminalden Calistirma
 
-## CLI ile Çalıştırma
-
-Belirli bir tarih için:
+Belirli bir gun:
 
 ```bash
-python -m src.app.main --date 2026-02-27
+python -m src.app.main --date 2026-03-05
 ```
 
-Bu komut:
-- veriyi çeker,
-- policy’leri çalıştırır,
-- hit’leri konsola yazar,
-- hit olan departmanlara e-posta gönderir.
+Bugun icin (PowerShell):
 
-## Streamlit Debug Ekranı
+```powershell
+python -m src.app.main --date (Get-Date -Format 'yyyy-MM-dd')
+```
 
-Debug UI tüm akışı görsel olarak incelemek için vardır.
+Calisinca:
+- terminale item/hit/mail bilgileri basilir,
+- SMTP aciksa mail gonderilir,
+- mail sonucu log dosyalarina yazilir.
 
-Çalıştırma:
+## Log Ekrani (Streamlit'ten Bagimsiz)
+
+Bu ekran Streamlit degil, dogrudan HTML dosyasidir.
+
+Uretilen dosyalar:
+- `logs/mail_events.jsonl` (ham event kaydi)
+- `logs/mail_log_dashboard.html` (gorsel log ekrani)
+
+Mail gonderim adiminda event geldiginde dashboard otomatik guncellenir.
+
+Manuel yeniden uretmek icin:
+
+```bash
+python -m src.app.mail_log_dashboard
+```
+
+Acma yollari:
+
+```powershell
+start .\logs\mail_log_dashboard.html
+```
+
+veya dosyaya cift tik:
+- `logs/mail_log_dashboard.html`
+
+Ekranda gorulen alanlar:
+- time
+- status (`sent`, `failed`, `skipped_disabled`, `failed_no_recipients`)
+- from
+- recipients
+- subject
+- content preview
+- message
+
+## Debug Ekrani (Ayri)
+
+Bu ekran Streamlit tabanli inceleme ekranidir ve log HTML'den bagimsizdir.
+
+Calistirma:
 
 ```bash
 streamlit run src/app/streamlit_debug.py
 ```
 
-Tarayıcıda genelde: `http://localhost:8501`
+Tarayici:
+- `http://localhost:8501`
 
-Import yolu sorunu yaşarsanız:
+Import sorunu olursa:
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path
 streamlit run src/app/streamlit_debug.py
 ```
 
-### Sol Panel Seçenekleri
+Debug tablari:
+- `Overview`: URL, HTML boyutu, settings ozeti, section dagilimi
+- `Items`: parse edilen tum kayitlar + candidate status
+- `Policies`: policy/score/reason gorunumu
+- `LLM`: LLM raw cevaplari ve confidence
+- `Email Preview`: gonderim onizleme, istenirse manuel gonderim
+- `HTML`: cekilen ham HTML kesiti
 
-- `Date`: Hangi günün verisi işlenecek.
-- `Table row limit`: Tablolarda gösterilecek maksimum satır.
-- `Only show relevant policy rows`: Sadece `is_relevant=True` satırlarını göster.
-- `Enable real email sending`: Açıkken panel içinden gerçek e-posta gönderimine izin ver.
-- `Run debug`: Akışı çalıştır.
+## Calisma Akisi (Uctan Uca)
 
-### Debug Sekmeleri
+1. `src.app.main` -> `run_daily.run` cagirilir.
+2. Gunluk index cekilir, maddeler parse edilir.
+3. Aday kapisiyla LLM oncesi filtreleme yapilir.
+4. Adaylarin detay metni cekilir.
+5. LLM siniflandirir (`text[:2500]`).
+6. Confidence gate uygulanir.
+7. Departman hit listeleri olusur.
+8. Hit varsa departman bazli subject/body hazirlanir.
+9. SMTP ile gonderim denenir.
+10. Sonuc `mail_log.append_mail_event` ile kaydedilir.
+11. `logs/mail_log_dashboard.html` guncellenir.
 
-- `Overview`
-  - Çekilen URL, HTML boyutu, env ayar özeti (şifre maskeli)
-  - section/subsection dağılımı
-  - cross-policy matrix (bir kaydı hangi policy’ler tuttu)
-- `Items`
-  - Parse edilen tüm maddeler
-- `Policies`
-  - Policy bazında skor, reason, hit oranı
-- `Email Preview`
-  - Departman bazında alıcı listesi, subject ve HTML önizleme
-  - İstenirse seçili departmanlar için gerçek gönderim
-- `HTML`
-  - Çekilen ham HTML’den kesit
+## Kisa Sorun Giderme
 
-## Policy Skorlama Mantığı
+- Mail gitmiyorsa:
+  - `SMTP_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` alanlarini kontrol edin.
+  - Alici listeleri bos olmamali.
+  - Kurumsal firewall/SMTP erisimini kontrol edin.
 
-Tüm policy dosyaları aynı prensiple çalışır:
+- Log ekrani bossa:
+  - henuz hic mail olayi olusmamis olabilir.
+  - bir kez pipeline calistirip tekrar acin.
+  - gerekirse `python -m src.app.mail_log_dashboard` ile yeniden uretin.
 
-- `HIGH_SIGNAL` regex eşleşmesi: `+10`
-- `MID_SIGNAL` regex eşleşmesi: `+3`
-- Toplam skor `>= 10` ise kayıt ilgili kabul edilir.
-- `section` içinde `İLAN` geçerse doğrudan dışlanır (`score=0`).
-
-## E-posta Routing
-
-`pipeline/run_daily.py` içinde departman -> alıcı eşlemesi:
-
-- `isg -> ISG_RECIPIENTS`
-- `ik -> IK_RECIPIENTS`
-- `muhasebe -> MUHASEBE_RECIPIENTS`
-- `lojistik -> LOJISTIK_RECIPIENTS`
-
-Her departman için `hits` varsa:
-- subject `build_generic_email_subject(...)`
-- body `build_generic_email_html(...)`
-- SMTP gönderim `send_html_email(...)`
-
-## Hızlı Sorun Giderme
-
-- `ModuleNotFoundError: No module named 'src'`
-  - `streamlit run src/app/streamlit_debug.py` komutunu proje kökünden çalıştırın.
-  - Gerekirse `PYTHONPATH` komutunu kullanın (üstte var).
-
-- `SMTP_HOST Field required`
-  - `.env` dosyasını kontrol edin.
-  - İlk satırda BOM kaynaklı bozulma varsa dosyayı UTF-8 (veya UTF-8 BOM) formatında kaydedin; config `utf-8-sig` ile okumaya ayarlı.
-
-- Mail gitmiyor
-  - SMTP host/port/user/pass doğruluğunu test edin.
-  - Gmail’de App Password kullandığınızdan emin olun.
-  - Ağ/Firewall/SMTP erişim kısıtlarını kontrol edin.
+- Debug ekrani acilmiyorsa:
+  - komutu proje kokunden calistirin.
+  - gerekirse `PYTHONPATH` ayarlayin.

@@ -31,7 +31,7 @@ REQUEST_DELAY_SECONDS = 0.35
 @dataclass(frozen=True)
 class CandidateDecision:
     """
-    LLM'e gidecek mi / skip mi?
+    Decide whether an item should go to LLM or should be skipped.
     """
 
     status: str  # "SKIP_ILAN" | "SKIP_NEG_HARD" | "CANDIDATE_LLM"
@@ -48,17 +48,17 @@ class PolicyHit:
 
 
 def decide_candidate(item: GazetteItem) -> CandidateDecision:
-    # 1) ILAN bolumu ise direkt skip
+    # 1) If section is ilan, skip directly.
     if is_excluded_section(item):
         return CandidateDecision(status="SKIP_ILAN")
 
     haystack = build_haystack(item)
 
-    # 2) Negatif kurallar
+    # 2) Negative rules.
     neg_penalty, neg_reasons, hard_excluded = apply_negative_rules(haystack, NEGATIVE_RULES)
     override = has_factory_override(haystack)
 
-    # 3) Hard negatif + override yoksa skip
+    # 3) Hard negative and no override means skip.
     if hard_excluded and not override:
         return CandidateDecision(
             status="SKIP_NEG_HARD",
@@ -67,7 +67,7 @@ def decide_candidate(item: GazetteItem) -> CandidateDecision:
             override_factory=False,
         )
 
-    # 4) Geri kalan herkes LLM aday
+    # 4) Remaining records are LLM candidates.
     return CandidateDecision(
         status="CANDIDATE_LLM",
         neg_penalty=neg_penalty,
@@ -80,10 +80,9 @@ def collect_daily_hits(
     day: date,
     policies: List[DepartmentPolicy],
 ) -> Tuple[List[GazetteItem], Dict[str, CandidateDecision], Dict[str, List[PolicyHit]]]:
-    session = build_session()  # http session hazirlar
+    session = build_session()
 
     html = fetch_daily_html(session=session, day=day)
-    # html i madde listesine cevirir
     items = parse_daily_items(html=html, base_url=daily_index_url(day))
 
     candidate_map: Dict[str, CandidateDecision] = {}
@@ -113,7 +112,7 @@ def collect_daily_hits(
 
         text = text_cache.get(item.url)
         if text is None:
-            # Soft throttle to avoid hitting the source site too aggressively.
+            # Soft throttle to avoid hitting the source too aggressively.
             sleep(REQUEST_DELAY_SECONDS)
             try:
                 text = fetch_detail_text(session, item.url)
@@ -186,7 +185,7 @@ def run(day: date, policies: List[DepartmentPolicy]) -> None:
             continue
 
         haystack = build_haystack(item)
-        neg_penalty, neg_reasons, hard_excluded = apply_negative_rules(haystack, NEGATIVE_RULES)
+        _, _, hard_excluded = apply_negative_rules(haystack, NEGATIVE_RULES)
         override = has_factory_override(haystack)
         if hard_excluded and not override:
             continue
@@ -198,13 +197,6 @@ def run(day: date, policies: List[DepartmentPolicy]) -> None:
             text_cache[item.url] = text
         text = (text or "").strip()
 
-        # Debug hedef PDF
-        if "20250621-18" in item.url:
-            print("\n[DEBUG] TARGET ITEM:", item.title)
-            print("[DEBUG] URL:", item.url)
-            print("[DEBUG] TEXT_LEN:", len(text))
-            print("[DEBUG] TEXT_HEAD:", text[:300].replace("\n", " "))
-
         if not text:
             continue
 
@@ -214,12 +206,7 @@ def run(day: date, policies: List[DepartmentPolicy]) -> None:
             md = ollama.classify_multi(title=item.title, url=item.url, text=text[:2500])
             llm_cache[item.url] = md
 
-        if "20250621-18" in item.url:
-            print("[DEBUG] LLM_RAW:", md.raw)
-            print("[DEBUG] LLM_PARSED:", md.isg, md.ik, md.muhasebe, md.lojistik, md.confidence)
-            print("[DEBUG] LLM_EVIDENCE:", md.evidence)
-
-        # 4) Confidence gate (ilk testte düşük tut)
+        # 4) Confidence gate
         if md.confidence < 40:
             continue
 
@@ -232,7 +219,47 @@ def run(day: date, policies: List[DepartmentPolicy]) -> None:
         if md.lojistik:
             hits_by_dept["lojistik"].append((item, md))
 
-    # 5) Print sonuç
+    recipients_map = {
+        "isg": [v.strip() for v in settings.isg_recipients.split(",") if v and v.strip()],
+        "ik": [v.strip() for v in settings.ik_recipients.split(",") if v and v.strip()],
+        "muhasebe": [v.strip() for v in settings.muhasebe_recipients.split(",") if v and v.strip()],
+        "lojistik": [v.strip() for v in settings.lojistik_recipients.split(",") if v and v.strip()],
+    }
+
+    for dept in ["isg", "ik", "muhasebe", "lojistik"]:
+        hits = hits_by_dept.get(dept, [])
+        if not hits:
+            continue
+
+        recipients = recipients_map.get(dept, [])
+        if not recipients:
+            print(f"[WARN] {dept.upper()}: no recipients configured")
+            continue
+
+        hit_items = [item for item, _ in hits]
+        subject = build_generic_email_subject(dept, day, len(hit_items))
+        html_body = build_generic_email_html(dept, day, hit_items)
+
+        try:
+            send_html_email(
+                smtp_host=settings.smtp_host,
+                smtp_port=settings.smtp_port,
+                smtp_user=settings.smtp_user,
+                smtp_password=settings.smtp_password,
+                smtp_secure=settings.smtp_secure,
+                smtp_auth=settings.smtp_auth,
+                smtp_tls_reject_unauthorized=settings.smtp_tls_reject_unauthorized,
+                smtp_enabled=settings.smtp_enabled,
+                mail_from=settings.mail_from,
+                recipients=recipients,
+                subject=subject,
+                html_body=html_body,
+            )
+            print(f"[INFO] {dept.upper()}: email sent to {', '.join(recipients)}")
+        except Exception as exc:  # pragma: no cover - network dependent
+            print(f"[ERROR] {dept.upper()}: email failed -> {exc}")
+
+    # 5) Print results
     for dept in ["isg", "ik", "muhasebe", "lojistik"]:
         hits = hits_by_dept.get(dept, [])
         print(f"\n=== Department: {dept} | hits: {len(hits)} ===")
