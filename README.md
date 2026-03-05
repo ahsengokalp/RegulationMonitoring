@@ -174,6 +174,9 @@ Ekranda gorulen alanlar:
 - content preview
 - message
 
+Logo kullanimi:
+- `assets/dikkan_logo.png` (veya `.jpg`, `.jpeg`, `.svg`) dosyasi varsa dashboard tepesinde otomatik gosterilir.
+
 ## Debug Ekrani (Ayri)
 
 Bu ekran Streamlit tabanli inceleme ekranidir ve log HTML'den bagimsizdir.

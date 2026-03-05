@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mail Log Dashboard</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 18px;
+        font-family: Segoe UI, Arial, sans-serif;
+        background: #f5f7fb;
+        color: #111827;
+      }
+      .wrap { max-width: 1400px; margin: 0 auto; }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 6px;
+      }
+      .brand-logo {
+        height: 54px;
+        width: auto;
+        display: block;
+      }
+      .brand-fallback {
+        font-size: 50px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.4px;
+        font-family: Segoe UI, Arial, sans-serif;
+      }
+      .brand-fallback .d { color: #f07721; }
+      .brand-fallback .ikkan { color: #54565a; }
+      h1 { margin: 0; }
+      .muted { color: #6b7280; font-size: 13px; margin-bottom: 14px; }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid #dbe3ef;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .label { font-size: 11px; color: #6b7280; text-transform: uppercase; }
+      .value { margin-top: 4px; font-size: 18px; font-weight: 700; }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border: 1px solid #dbe3ef;
+      }
+      th, td {
+        padding: 8px;
+        border-bottom: 1px solid #e8edf5;
+        text-align: left;
+        vertical-align: top;
+        font-size: 12px;
+      }
+      th { background: #eef3fb; }
+      tr:hover td { background: #fafcff; }
+      .empty { color: #6b7280; font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <div class="brand-fallback"><span class="d">D</span><span class="ikkan">ikkan</span></div>
+        <h1>Mail Log Dashboard</h1>
+      </div>
+      <div class="muted">Generated at: 2026-03-05 09:10:18 | Source: C:\Users\bt.stajyer\OneDrive - Dikkan Gemi ve Endustriyel Vana Sanayi Ticaret A.S\Masaüstü\ahsen\factory-regulation-monitoring\logs\mail_events.jsonl</div>
+
+      <div class="cards">
+        <div class="card"><div class="label">Total Events</div><div class="value">1</div></div>
+        <div class="card"><div class="label">Sent</div><div class="value">1</div></div>
+        <div class="card"><div class="label">Failed</div><div class="value">0</div></div>
+        <div class="card"><div class="label">Other</div><div class="value">0</div></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Status</th>
+            <th>From</th>
+            <th>Recipients</th>
+            <th>Subject</th>
+            <th>Content Preview</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>2026-03-05 08:05:19</td><td>sent</td><td>Toolbox &lt;docker@dikkan.com&gt;</td><td>suedagokalp150@gmail.com</td><td>[MUHASEBE] Resmî Gazete (05.03.2026) - 1 yeni kayıt</td><td>MUHASEBE için Resmî Gazete Bildirimi Tarih: 05.03.2026 Bulunan kayıt: 1 –– 4760 Sayılı Özel Tüketim Vergisi Kanununa Ekli (I) Sayılı Listenin (A) Cetvelinde Yer Alan Bazı Malların Özel Tüketim Vergisi Tutarlarının Yeniden Tespiti Hakkında Karar (Karar Sayısı: 10995) https://ww...</td><td>Sent successfully</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from html import escape
 import json
@@ -11,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "logs"
 JSONL_PATH = LOG_DIR / "mail_events.jsonl"
 HTML_PATH = LOG_DIR / "mail_log_dashboard.html"
+ASSETS_DIR = PROJECT_ROOT / "assets"
 
 
 def now_text() -> str:
@@ -75,10 +77,31 @@ def _read_events(max_rows: int = 1000) -> list[dict]:
     return rows[-max_rows:]
 
 
+def _logo_data_uri() -> str:
+    candidates = (
+        ("dikkan_logo.png", "image/png"),
+        ("dikkan_logo.jpg", "image/jpeg"),
+        ("dikkan_logo.jpeg", "image/jpeg"),
+        ("dikkan_logo.svg", "image/svg+xml"),
+    )
+    for filename, mime in candidates:
+        path = ASSETS_DIR / filename
+        if not path.exists():
+            continue
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:{mime};base64,{data}"
+    return ""
+
+
 def _render_dashboard_html(events: list[dict]) -> str:
     sent_count = sum(1 for row in events if row.get("status") == "sent")
     failed_count = sum(1 for row in events if str(row.get("status", "")).startswith("failed"))
     other_count = len(events) - sent_count - failed_count
+    logo_src = _logo_data_uri()
+    if logo_src:
+        logo_html = f'<img class="brand-logo" src="{logo_src}" alt="Dikkan logo" />'
+    else:
+        logo_html = '<div class="brand-fallback"><span class="d">D</span><span class="ikkan">ikkan</span></div>'
 
     rows_html: list[str] = []
     for row in reversed(events):
@@ -115,7 +138,27 @@ def _render_dashboard_html(events: list[dict]) -> str:
         color: #111827;
       }}
       .wrap {{ max-width: 1400px; margin: 0 auto; }}
-      h1 {{ margin: 0 0 6px 0; }}
+      .head {{
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 6px;
+      }}
+      .brand-logo {{
+        height: 54px;
+        width: auto;
+        display: block;
+      }}
+      .brand-fallback {{
+        font-size: 50px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.4px;
+        font-family: Segoe UI, Arial, sans-serif;
+      }}
+      .brand-fallback .d {{ color: #f07721; }}
+      .brand-fallback .ikkan {{ color: #54565a; }}
+      h1 {{ margin: 0; }}
       .muted {{ color: #6b7280; font-size: 13px; margin-bottom: 14px; }}
       .cards {{
         display: grid;
@@ -151,7 +194,10 @@ def _render_dashboard_html(events: list[dict]) -> str:
   </head>
   <body>
     <div class="wrap">
-      <h1>Mail Log Dashboard</h1>
+      <div class="head">
+        {logo_html}
+        <h1>Mail Log Dashboard</h1>
+      </div>
       <div class="muted">Generated at: {escape(now_text())} | Source: {escape(str(JSONL_PATH))}</div>
 
       <div class="cards">
