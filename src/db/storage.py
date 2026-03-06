@@ -9,11 +9,12 @@ from typing import Iterable, List
 from src.core.models import GazetteItem
 
 
-DB_PATH = Path("/app/data/items.db")
+DB_DIR = Path.cwd() / "data"
+DB_PATH = DB_DIR / "items.db"
 
 
 def _connect():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DB_DIR.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
