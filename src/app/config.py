@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     ik_recipients: str = Field(..., alias="IK_RECIPIENTS")
     muhasebe_recipients: str = Field(..., alias="MUHASEBE_RECIPIENTS")
     lojistik_recipients: str = Field(..., alias="LOJISTIK_RECIPIENTS")
+    it_siber_recipients: str = Field("", alias="IT_SIBER_RECIPIENTS")
+    kvkk_recipients: str = Field("", alias="KVKK_RECIPIENTS")
 
 
 def get_settings() -> Settings:

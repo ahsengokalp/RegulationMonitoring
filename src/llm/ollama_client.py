@@ -10,6 +10,8 @@ DEPT_LABELS = {
     "ik": "İnsan Kaynakları",
     "muhasebe": "Muhasebe / Vergi / Finans",
     "lojistik": "Lojistik / Dış Ticaret / Gümrük",
+    "it_siber": "IT / Siber Güvenlik / Bilgi Güvenliği",
+    "kvkk": "KVKK / Kişisel Verilerin Korunması",
 }
 
 
@@ -27,6 +29,8 @@ class MultiDeptDecision:
     ik: bool
     muhasebe: bool
     lojistik: bool
+    it_siber: bool
+    kvkk: bool
     confidence: int
     evidence: str
     raw: str
@@ -77,12 +81,12 @@ Sen bir mevzuat analiz uzmanısın.
 
 Görev:
 Aşağıdaki Resmî Gazete içeriği bir fabrikada hangi departmanları etkiler?
-Departmanlar: ISG, IK, MUHASEBE, LOJISTIK
+Departmanlar: ISG, IK, MUHASEBE, LOJISTIK, IT_SIBER, KVKK
 
 Ön kapı sorusu (zorunlu):
 "Bu düzenleme özel sektör üretim işletmelerinin yükümlülüklerini değiştiriyor mu?"
 - Önce bu soruyu cevapla.
-- Cevap HAYIR ise departmanların tamamı false olmalı (isg=false, ik=false, muhasebe=false, lojistik=false).
+- Cevap HAYIR ise departmanların tamamı false olmalı (isg=false, ik=false, muhasebe=false, lojistik=false, it_siber=false, kvkk=false).
 - Cevap EVET ise departmanları ayrı ayrı değerlendir.
 
 Kritik kural:
@@ -101,11 +105,23 @@ Departman Tanımları (fabrika bağlamı):
 - IK: işe alım, personel, ücret, izin, SGK, çalışma izni, iş kanunu, disiplin vb.
 - MUHASEBE: vergi, KDV, e-fatura/e-defter, finans, faiz, karşılık, muhasebe standartları vb.
 - LOJISTIK: gümrük, GTIP, ithalat/ihracat, dış ticaret mevzuatı, antrepo, ADR, taşıma, tedarik vb.
+- IT_SIBER: siber güvenlik, bilgi güvenliği, bilişim, elektronik haberleşme, BTK, SOME, bilgi teknolojileri, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001 vb.
+- KVKK: kişisel veri, KVKK, 6698, veri sorumlusu, veri işleyen, açık rıza, aydınlatma yükümlülüğü, veri ihlali, veri koruma, anonimleştirme, veri aktarımı vb.
 
 Lojistik guard:
 LOJISTIK=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
 gümrük, GTİP, ithalat, ihracat, dış ticaret, antrepo, A.TR, EUR.1, navlun, konşimento, ADR, taşıma, nakliye, liman, konteyner.
 Bu kelimeler yoksa LOJISTIK=false.
+
+IT_SIBER guard:
+IT_SIBER=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
+siber, bilgi güvenliği, bilişim, BTK, SOME, elektronik haberleşme, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001.
+Bu kelimeler yoksa IT_SIBER=false.
+
+KVKK guard:
+KVKK=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
+KVKK, 6698, kişisel veri, veri sorumlusu, veri işleyen, açık rıza, aydınlatma, veri ihlali, veri koruma, anonimleştirme.
+Bu kelimeler yoksa KVKK=false.
 
 Not: "dış ticaret" ve "ihracat/ithalat" konuları IK değil, LOJISTIK kapsamındadır.
 
@@ -118,6 +134,7 @@ Sadece TEK SATIR JSON döndür.
 Format:
 {{"affects_private_manufacturing_obligations": true/false,
 "isg": true/false, "ik": true/false, "muhasebe": true/false, "lojistik": true/false,
+"it_siber": true/false, "kvkk": true/false,
 "confidence": 0-100, "evidence": "metinden kanıt + fabrikaya etkisi"}}
 
 Başlık: {title}
@@ -148,6 +165,8 @@ METİN:
                     ik=False,
                     muhasebe=False,
                     lojistik=False,
+                    it_siber=False,
+                    kvkk=False,
                     confidence=confidence,
                     evidence=evidence,
                     raw=raw,
@@ -158,12 +177,14 @@ METİN:
                 ik=_as_bool(obj.get("ik", False)),
                 muhasebe=_as_bool(obj.get("muhasebe", False)),
                 lojistik=_as_bool(obj.get("lojistik", False)),
+                it_siber=_as_bool(obj.get("it_siber", False)),
+                kvkk=_as_bool(obj.get("kvkk", False)),
                 confidence=confidence,
                 evidence=evidence,
                 raw=raw,
             )
         except Exception:
-            return MultiDeptDecision(False, False, False, False, 0, "", raw)
+            return MultiDeptDecision(False, False, False, False, False, False, 0, "", raw)
 
 
 def _build_prompt(*, department: str, title: str, url: str, text: str) -> str:

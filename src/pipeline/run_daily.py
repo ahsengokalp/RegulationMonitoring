@@ -20,6 +20,8 @@ from src.policies.common_negative_rules import NEGATIVE_RULES
 from src.policies.factory_signals import has_factory_override
 from src.policies.ik import IkPolicy
 from src.policies.isg import IsgPolicy
+from src.policies.it_siber import ItSiberPolicy
+from src.policies.kvkk import KvkkPolicy
 from src.policies.lojistik import LojistikPolicy
 from src.policies.muhasebe import MuhasebePolicy
 from src.policies.negative_filter import apply_negative_rules
@@ -160,7 +162,7 @@ def collect_daily_hits(
                 continue
             if "20250621-18" in item.url:
                 print("\n[DEBUG] LLM_RAW:", md.raw)
-                print("[DEBUG] LLM_PARSED:", md.isg, md.ik, md.muhasebe, md.lojistik, md.confidence)
+                print("[DEBUG] LLM_PARSED:", md.isg, md.ik, md.muhasebe, md.lojistik, md.it_siber, md.kvkk, md.confidence)
                 print("[DEBUG] LLM_EVIDENCE:", md.evidence)
             llm_cache[item.url] = md
 
@@ -187,6 +189,12 @@ def collect_daily_hits(
         if md.lojistik and "lojistik" in policy_map:
             decision = policy_map["lojistik"].evaluate_title(item)
             hits_by_policy["lojistik"].append(PolicyHit(item=item, decision=decision, llm=md))
+        if md.it_siber and "it_siber" in policy_map:
+            decision = policy_map["it_siber"].evaluate_title(item)
+            hits_by_policy["it_siber"].append(PolicyHit(item=item, decision=decision, llm=md))
+        if md.kvkk and "kvkk" in policy_map:
+            decision = policy_map["kvkk"].evaluate_title(item)
+            hits_by_policy["kvkk"].append(PolicyHit(item=item, decision=decision, llm=md))
 
     return items, candidate_map, hits_by_policy
 
@@ -265,6 +273,10 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
             hits_by_dept["muhasebe"].append((item, md))
         if md.lojistik:
             hits_by_dept["lojistik"].append((item, md))
+        if md.it_siber:
+            hits_by_dept["it_siber"].append((item, md))
+        if md.kvkk:
+            hits_by_dept["kvkk"].append((item, md))
 
     # --- Persist items + department flags to SQLite ---
     dept_map: dict[str, set[str]] = {}
@@ -283,8 +295,10 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
         "ik": [v.strip() for v in settings.ik_recipients.split(",") if v and v.strip()],
         "muhasebe": [v.strip() for v in settings.muhasebe_recipients.split(",") if v and v.strip()],
         "lojistik": [v.strip() for v in settings.lojistik_recipients.split(",") if v and v.strip()],
+        "it_siber": [v.strip() for v in settings.it_siber_recipients.split(",") if v and v.strip()],
+        "kvkk": [v.strip() for v in settings.kvkk_recipients.split(",") if v and v.strip()],
     }
-    dept_order = ("isg", "ik", "muhasebe", "lojistik")
+    dept_order = ("isg", "ik", "muhasebe", "lojistik", "it_siber", "kvkk")
     department_results: list[DepartmentMailResult] = []
 
     for dept in dept_order:
@@ -381,4 +395,4 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
 
 
 def default_policies() -> List[DepartmentPolicy]:
-    return [IsgPolicy(), IkPolicy(), MuhasebePolicy(), LojistikPolicy()]
+    return [IsgPolicy(), IkPolicy(), MuhasebePolicy(), LojistikPolicy(), ItSiberPolicy(), KvkkPolicy()]

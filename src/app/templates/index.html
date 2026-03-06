@@ -63,7 +63,7 @@
 
         <!-- Department summary cards -->
         <div class="row mb-4 g-3">
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <div class="card dept-card border-primary">
                     <div class="card-body">
                         <h2 class="text-primary">{{ dept_counts.muhasebe }}</h2>
@@ -71,7 +71,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <div class="card dept-card border-danger">
                     <div class="card-body">
                         <h2 class="text-danger">{{ dept_counts.isg }}</h2>
@@ -79,7 +79,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <div class="card dept-card border-success">
                     <div class="card-body">
                         <h2 class="text-success">{{ dept_counts.ik }}</h2>
@@ -87,11 +87,27 @@
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <div class="card dept-card border-warning">
                     <div class="card-body">
                         <h2 class="text-warning">{{ dept_counts.lojistik }}</h2>
                         <p><i class="bi bi-truck"></i> Lojistik</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="card dept-card border-info">
+                    <div class="card-body">
+                        <h2 class="text-info">{{ dept_counts.it_siber }}</h2>
+                        <p><i class="bi bi-shield-lock"></i> IT / Siber</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <div class="card dept-card border-dark">
+                    <div class="card-body">
+                        <h2 class="text-dark">{{ dept_counts.kvkk }}</h2>
+                        <p><i class="bi bi-file-earmark-lock"></i> KVKK</p>
                     </div>
                 </div>
             </div>
@@ -182,6 +198,16 @@
                                     {% if item.dept_lojistik %}
                                     <span class="badge bg-warning text-dark badge-dept" title="Lojistik">
                                         <i class="bi bi-truck"></i> LOJ
+                                    </span>
+                                    {% endif %}
+                                    {% if item.dept_it_siber %}
+                                    <span class="badge bg-info badge-dept" title="IT / Siber Güvenlik">
+                                        <i class="bi bi-shield-lock"></i> IT
+                                    </span>
+                                    {% endif %}
+                                    {% if item.dept_kvkk %}
+                                    <span class="badge bg-dark badge-dept" title="KVKK">
+                                        <i class="bi bi-file-earmark-lock"></i> KVKK
                                     </span>
                                     {% endif %}
                                 </td>

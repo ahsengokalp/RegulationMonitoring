@@ -34,6 +34,8 @@ def init_db() -> None:
             dept_isg       INTEGER DEFAULT 0,
             dept_ik        INTEGER DEFAULT 0,
             dept_lojistik  INTEGER DEFAULT 0,
+            dept_it_siber  INTEGER DEFAULT 0,
+            dept_kvkk      INTEGER DEFAULT 0,
             inserted_at TEXT    NOT NULL
         );
 
@@ -46,7 +48,7 @@ def init_db() -> None:
         """
     )
     # Migration: add columns that may be missing in older databases
-    for col in ("is_pdf", "dept_muhasebe", "dept_isg", "dept_ik", "dept_lojistik"):
+    for col in ("is_pdf", "dept_muhasebe", "dept_isg", "dept_ik", "dept_lojistik", "dept_it_siber", "dept_kvkk"):
         try:
             conn.execute(f"ALTER TABLE items ADD COLUMN {col} INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
@@ -82,13 +84,16 @@ def save_items(
             """
             INSERT INTO items
                 (run_date, title, url, section, subsection, is_pdf,
-                 dept_muhasebe, dept_isg, dept_ik, dept_lojistik, inserted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 dept_muhasebe, dept_isg, dept_ik, dept_lojistik,
+                 dept_it_siber, dept_kvkk, inserted_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_date, url) DO UPDATE SET
                 dept_muhasebe = excluded.dept_muhasebe,
                 dept_isg      = excluded.dept_isg,
                 dept_ik       = excluded.dept_ik,
                 dept_lojistik = excluded.dept_lojistik,
+                dept_it_siber = excluded.dept_it_siber,
+                dept_kvkk     = excluded.dept_kvkk,
                 inserted_at   = excluded.inserted_at
             """,
             (
@@ -102,6 +107,8 @@ def save_items(
                 1 if "isg" in depts else 0,
                 1 if "ik" in depts else 0,
                 1 if "lojistik" in depts else 0,
+                1 if "it_siber" in depts else 0,
+                1 if "kvkk" in depts else 0,
                 now,
             ),
         )
@@ -150,7 +157,7 @@ def get_last_check_time() -> Optional[str]:
 
 
 def get_department_counts(items: List[dict]) -> dict:
-    counts = {"muhasebe": 0, "isg": 0, "ik": 0, "lojistik": 0}
+    counts = {"muhasebe": 0, "isg": 0, "ik": 0, "lojistik": 0, "it_siber": 0, "kvkk": 0}
     for it in items:
         if it.get("dept_muhasebe"):
             counts["muhasebe"] += 1
@@ -160,4 +167,8 @@ def get_department_counts(items: List[dict]) -> dict:
             counts["ik"] += 1
         if it.get("dept_lojistik"):
             counts["lojistik"] += 1
+        if it.get("dept_it_siber"):
+            counts["it_siber"] += 1
+        if it.get("dept_kvkk"):
+            counts["kvkk"] += 1
     return counts
