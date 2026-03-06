@@ -12,3 +12,17 @@ services:
     restart: always
     volumes:
       - ./data:/app/data
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: regulation_monitoring_web
+    container_name: regulation_monitoring_web
+    command: ["python3.11", "-m", "streamlit", "run", "src/app/streamlit_dashboard.py", "--server.port", "5048", "--server.address", "0.0.0.0"]
+    ports:
+      - "5048:5048"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: always
+    volumes:
+      - ./data:/app/data

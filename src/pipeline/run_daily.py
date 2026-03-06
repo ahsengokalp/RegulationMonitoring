@@ -24,6 +24,7 @@ from src.policies.lojistik import LojistikPolicy
 from src.policies.muhasebe import MuhasebePolicy
 from src.policies.negative_filter import apply_negative_rules
 from src.policies.utils import build_haystack, is_excluded_section, is_ilan_url, contains_financial_keywords
+from src.db.storage import save_items
 
 REQUEST_DELAY_SECONDS = 0.35
 
@@ -198,6 +199,12 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
     html = fetch_daily_html(session=session, day=day)
     items = parse_daily_items(html=html, base_url=daily_index_url(day))
     print(f"[INFO] items found: {len(items)}")
+
+    # persist parsed items for web dashboard
+    try:
+        save_items(day, items)
+    except Exception:
+        print("[WARN] failed to save items to sqlite database")
     # Print parsed items so they are visible in terminal output
     for it in items:
         print(f"- {it.title}")
