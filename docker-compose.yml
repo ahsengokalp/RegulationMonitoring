@@ -9,7 +9,6 @@ services:
     restart: always
     environment:
       - PYTHONUNBUFFERED=1
-    restart: always
     volumes:
       - ./data:/app/data
   web:
