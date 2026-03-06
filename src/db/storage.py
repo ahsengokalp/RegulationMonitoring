@@ -120,13 +120,21 @@ def save_run_log(run_day: date, items_found: int) -> None:
     conn.close()
 
 
-def get_items(limit: int = 100) -> List[dict]:
+def get_items(limit: int = 100, search: Optional[str] = None) -> List[dict]:
     init_db()
     conn = _connect()
-    rows = conn.execute(
-        "SELECT * FROM items ORDER BY run_date DESC, id DESC LIMIT ?",
-        (limit,),
-    ).fetchall()
+    if search:
+        like = f"%{search}%"
+        rows = conn.execute(
+            "SELECT * FROM items WHERE title LIKE ? OR section LIKE ? OR subsection LIKE ? "
+            "ORDER BY run_date DESC, id DESC LIMIT ?",
+            (like, like, like, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM items ORDER BY run_date DESC, id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 

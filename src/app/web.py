@@ -19,7 +19,8 @@ def index():
     limit = request.args.get("limit", 100, type=int)
     if limit not in (50, 100, 200, 500):
         limit = 100
-    items = get_items(limit=limit)
+    search = request.args.get("q", "").strip()
+    items = get_items(limit=limit, search=search or None)
     last_check = get_last_check_time()
     dept_counts = get_department_counts(items)
     today = date.today().isoformat()
@@ -27,6 +28,7 @@ def index():
         "index.html",
         items=items,
         limit=limit,
+        search=search,
         last_check=last_check,
         dept_counts=dept_counts,
         today=today,

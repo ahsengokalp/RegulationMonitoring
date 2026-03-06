@@ -97,16 +97,32 @@
             </div>
         </div>
 
-        <!-- Filter buttons -->
-        <div class="mb-3">
-            <span class="text-muted me-2">Göster:</span>
-            <div class="btn-group" role="group">
-                {% for n in [50, 100, 200, 500] %}
-                <a href="?limit={{ n }}"
-                   class="btn btn-outline-secondary btn-sm filter-btn {{ 'active' if limit == n else '' }}">
-                    Son {{ n }}
-                </a>
-                {% endfor %}
+        <!-- Search & Filter bar -->
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+            <form action="/" method="GET" class="d-flex gap-2" style="max-width:400px; flex:1 1 auto;">
+                <input type="hidden" name="limit" value="{{ limit }}">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="Başlık, konu veya alt başlıkta ara…"
+                           value="{{ search }}">
+                    <button class="btn btn-outline-primary" type="submit">Ara</button>
+                    {% if search %}
+                    <a href="?limit={{ limit }}" class="btn btn-outline-secondary" title="Aramayı temizle">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+            <div>
+                <span class="text-muted me-2">Göster:</span>
+                <div class="btn-group" role="group">
+                    {% for n in [50, 100, 200, 500] %}
+                    <a href="?limit={{ n }}{% if search %}&q={{ search }}{% endif %}"
+                       class="btn btn-outline-secondary btn-sm filter-btn {{ 'active' if limit == n else '' }}">
+                        Son {{ n }}
+                    </a>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
