@@ -19,7 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project source
 COPY pyproject.toml /app/
-COPY README.md /app/
 COPY src /app/src
 
 # Install the project itself (editable-like, uses pyproject.toml)
