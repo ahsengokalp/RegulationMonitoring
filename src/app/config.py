@@ -108,9 +108,19 @@ def get_settings() -> Settings:
             else:
                 fallback_kwargs[attr] = val
 
-        # Provide sensible defaults for optional credentials
+        # Provide sensible defaults for optional credentials and required fields
         fallback_kwargs.setdefault("smtp_user", "")
         fallback_kwargs.setdefault("smtp_password", "")
+        # Required fields that may be missing in container; provide safe defaults
+        fallback_kwargs.setdefault("smtp_host", "")
+        fallback_kwargs.setdefault("mail_from", "noreply@localhost")
+        fallback_kwargs.setdefault("isg_recipients", "")
+        fallback_kwargs.setdefault("ik_recipients", "")
+        fallback_kwargs.setdefault("muhasebe_recipients", "")
+        fallback_kwargs.setdefault("lojistik_recipients", "")
+        # When env is missing, disable outgoing mail and admin mails to avoid errors
+        fallback_kwargs.setdefault("smtp_enabled", False)
+        fallback_kwargs.setdefault("admin_mail_enabled", False)
 
         try:
             s = Settings(**fallback_kwargs)
