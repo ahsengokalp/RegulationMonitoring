@@ -33,5 +33,8 @@ COPY README.md /app/
 # Install project and dependencies
 RUN python3.11 -m pip install --no-cache-dir .
 
-# Run the hourly daemon by default (invokes the CLI internally)
-CMD ["python3.11", "-m", "src.daemon.hourly_runner"]
+# Expose the web dashboard port
+EXPOSE 5048
+
+# Run the app: web dashboard + hourly scheduler
+CMD ["python3.11", "-m", "src.app.main"]

@@ -24,7 +24,7 @@ from src.policies.lojistik import LojistikPolicy
 from src.policies.muhasebe import MuhasebePolicy
 from src.policies.negative_filter import apply_negative_rules
 from src.policies.utils import build_haystack, is_excluded_section, is_ilan_url, contains_financial_keywords
-from src.db.storage import save_items
+from src.db.storage import save_items, save_run_log
 
 REQUEST_DELAY_SECONDS = 0.35
 
@@ -200,11 +200,6 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
     items = parse_daily_items(html=html, base_url=daily_index_url(day))
     print(f"[INFO] items found: {len(items)}")
 
-    # persist parsed items for web dashboard
-    try:
-        save_items(day, items)
-    except Exception:
-        print("[WARN] failed to save items to sqlite database")
     # Print parsed items so they are visible in terminal output
     for it in items:
         print(f"- {it.title}")
@@ -270,6 +265,18 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
             hits_by_dept["muhasebe"].append((item, md))
         if md.lojistik:
             hits_by_dept["lojistik"].append((item, md))
+
+    # --- Persist items + department flags to SQLite ---
+    dept_map: dict[str, set[str]] = {}
+    for dept_name, dept_hits in hits_by_dept.items():
+        for hit_item, _ in dept_hits:
+            dept_map.setdefault(hit_item.url, set()).add(dept_name)
+
+    try:
+        save_items(day, items, dept_map=dept_map)
+        save_run_log(day, len(items))
+    except Exception:
+        print("[WARN] Failed to save items to database")
 
     recipients_map = {
         "isg": [v.strip() for v in settings.isg_recipients.split(",") if v and v.strip()],

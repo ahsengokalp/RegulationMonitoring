@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import argparse
-from datetime import date, datetime
+import threading
+import time
 import traceback
+from datetime import date, datetime, timedelta
 
 from src.app.config import get_settings
+from src.app.web import app
 from src.notify.emailer import send_html_email
 from src.notify.templates import build_admin_status_email_html, build_admin_status_email_subject
 from src.pipeline.run_daily import RunReport, default_policies, run
-
-
-def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser()
-    p.add_argument("--date", required=False, help="YYYY-MM-DD (default: today)")
-    return p.parse_args()
 
 
 def _split_recipients(raw: str) -> list[str]:
@@ -82,36 +78,59 @@ def _send_admin_status_email(
     print(f"[INFO] ADMIN: status email sent to {', '.join(recipients)}")
 
 
-def main() -> None:
-    args = parse_args()
-    if args.date:
-        day = datetime.strptime(args.date, "%Y-%m-%d").date()
-    else:
-        day = date.today()
+# ---------------------------------------------------------------------------
+# Scheduler: run pipeline for today, then sleep until next full hour
+# ---------------------------------------------------------------------------
+
+def _run_check() -> None:
+    """Run the pipeline once for today's date."""
+    day = date.today()
+    print(f"\n[SCHEDULER] Running check for {day.isoformat()} ...")
 
     report: RunReport | None = None
     run_error: Exception | None = None
-    traceback_text = ""
+    tb_text = ""
 
     try:
         report = run(day=day, policies=default_policies())
     except Exception as exc:
         run_error = exc
-        traceback_text = traceback.format_exc()
-        print(traceback_text)
-    finally:
-        try:
-            _send_admin_status_email(
-                day=day,
-                report=report,
-                run_error=run_error,
-                traceback_text=traceback_text,
-            )
-        except Exception as admin_exc:
-            print(f"[ERROR] ADMIN: status email failed -> {admin_exc}")
+        tb_text = traceback.format_exc()
+        print(tb_text)
 
-    if run_error is not None:
-        raise SystemExit(1)
+    try:
+        _send_admin_status_email(
+            day=day, report=report, run_error=run_error, traceback_text=tb_text,
+        )
+    except Exception as admin_exc:
+        print(f"[ERROR] ADMIN: status email failed -> {admin_exc}")
+
+
+def _scheduler_loop() -> None:
+    """Background thread: immediate run, then every hour on the hour."""
+    _run_check()
+
+    while True:
+        now = datetime.now()
+        next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        sleep_secs = (next_hour - now).total_seconds()
+        print(f"[SCHEDULER] Next check at {next_hour.strftime('%Y-%m-%d %H:%M')}, sleeping {sleep_secs:.0f}s")
+        time.sleep(sleep_secs)
+        _run_check()
+
+
+# ---------------------------------------------------------------------------
+# Entry-point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    # Start the hourly scheduler in a daemon thread
+    scheduler = threading.Thread(target=_scheduler_loop, daemon=True)
+    scheduler.start()
+
+    # Start Flask web server (blocking, keeps the process alive)
+    print("[INFO] Web dashboard starting on http://0.0.0.0:5048")
+    app.run(host="0.0.0.0", port=5048, debug=False, use_reloader=False)
 
 
 if __name__ == "__main__":
