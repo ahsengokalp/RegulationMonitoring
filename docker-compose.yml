@@ -8,8 +8,11 @@ services:
     container_name: regulation_monitoring
     ports:
       - "5048:5048"
+    env_file:
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
     restart: always
     volumes:
       - ./data:/app/data
+      - ./.env:/app/.env:ro

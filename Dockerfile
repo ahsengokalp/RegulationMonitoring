@@ -1,40 +1,32 @@
-FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-WORKDIR /app
+# python:3.11-slim supports linux/amd64 and linux/arm64 (Raspberry Pi)
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install Python 3.11 from deadsnakes and build tools
+WORKDIR /app
+
+# OS-level deps (minimal)
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends \
-	   software-properties-common \
-	   curl \
-	   ca-certificates \
-	&& add-apt-repository ppa:deadsnakes/ppa -y \
-	&& apt-get update \
-	&& apt-get install -y --no-install-recommends \
-	   python3.11 \
-	   python3.11-venv \
-	   python3.11-distutils \
-	   build-essential \
-	&& rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends \
+       curl \
+       ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Ensure pip for python3.11 is available
-RUN python3.11 -m ensurepip --upgrade \
-	&& python3.11 -m pip install --upgrade pip setuptools wheel
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project source
 COPY pyproject.toml /app/
-COPY src /app/src
 COPY README.md /app/
+COPY src /app/src
 
-# Install project and dependencies
-RUN python3.11 -m pip install --no-cache-dir .
+# Install the project itself (editable-like, uses pyproject.toml)
+RUN pip install --no-cache-dir .
 
 # Expose the web dashboard port
 EXPOSE 5048
 
-# Run the app: web dashboard + hourly scheduler
-CMD ["python3.11", "-m", "src.app.main"]
+# Run the app: Flask web server + hourly scheduler
+CMD ["python", "-m", "src.app.main"]
