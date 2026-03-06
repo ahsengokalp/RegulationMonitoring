@@ -1,0 +1,10 @@
+app
+core
+daemon
+db
+gazette
+llm
+notify
+pipeline
+policies
+tools
