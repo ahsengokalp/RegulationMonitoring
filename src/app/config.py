@@ -14,7 +14,7 @@ if not ENV_PATH.exists():
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=str(ENV_PATH),
+        env_file=None,
         env_file_encoding="utf-8-sig",
         extra="ignore",
         populate_by_name=True,
@@ -45,34 +45,8 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
+    # We don't use .env files in this deployment; rely on environment variables.
     import os
-    print(f"[DEBUG] ENV_PATH={ENV_PATH} exists={ENV_PATH.exists()}")
-    print(f"[DEBUG] CWD={Path.cwd()}")
-    print(f"[DEBUG] SMTP_HOST in env: {'SMTP_HOST' in os.environ}")
-    # Try to load variables from the .env file into os.environ at runtime
-    # This helps when docker/docker-compose did not populate the environment
-    # but the .env file was mounted into the container at ENV_PATH
-    if ENV_PATH.exists():
-        try:
-            loaded = 0
-            with ENV_PATH.open("r", encoding="utf-8") as fh:
-                for raw in fh:
-                    line = raw.strip()
-                    if not line or line.startswith("#"):
-                        continue
-                    if "=" not in line:
-                        continue
-                    key, val = line.split("=", 1)
-                    key = key.strip()
-                    val = val.strip().strip('"').strip("'")
-                    if key and key not in os.environ:
-                        os.environ[key] = val
-                        loaded += 1
-            print(f"[DEBUG] Loaded {loaded} vars from {ENV_PATH}")
-        except Exception:
-            print(f"[DEBUG] Failed to load env file {ENV_PATH}")
-    else:
-        print(f"[DEBUG] Env file not found at {ENV_PATH}")
     try:
         s = Settings()
     except Exception:
