@@ -4,6 +4,9 @@ import json
 import time
 from dataclasses import dataclass
 import requests
+import logging
+
+from src.core.http import build_session
 
 DEPT_LABELS = {
     "isg": "İş Sağlığı ve Güvenliği",
@@ -37,27 +40,36 @@ class MultiDeptDecision:
 
 
 class OllamaClient:
-    def __init__(self, base_url: str, model: str, timeout_s: int = 240) -> None:
+    def __init__(self, base_url: str, model: str, timeout_s: int = 120) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout_s = timeout_s
+        self.logger = logging.getLogger(__name__)
 
     def _post_generate(self, payload: dict) -> str:
         last_err = None
+        session = build_session()
         for attempt in range(3):  # 3 deneme
             try:
-                r = requests.post(
+                # use a short connect timeout and a longer read timeout
+                r = session.post(
                     f"{self.base_url}/api/generate",
                     json=payload,
-                    timeout=self.timeout_s,
+                    timeout=(5, self.timeout_s),
                 )
                 r.raise_for_status()
                 return (r.json().get("response") or "").strip()
-            except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
+            except requests.exceptions.RequestException as e:
                 last_err = e
+                self.logger.warning(
+                    "Ollama request failed (attempt %d) %s: %s",
+                    attempt + 1,
+                    f"{self.base_url}/api/generate",
+                    str(e),
+                )
                 time.sleep(2 + attempt * 2)  # backoff
         if last_err is not None:
-            raise last_err
+            raise RuntimeError(f"Ollama generate failed after retries: {last_err}") from last_err
         raise RuntimeError("Ollama generate failed without an explicit transport error")
 
     def classify(self, *, department: str, title: str, text: str, url: str = "") -> LlmDecision:
