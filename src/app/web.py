@@ -5,7 +5,7 @@ import threading
 import traceback
 from datetime import date, datetime
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, url_for, send_file
 
 from src.db.storage import get_department_counts, get_items, get_last_check_time
 from src.app.config import get_settings
@@ -121,3 +121,26 @@ def fetch():
         except ValueError:
             flash("Geçersiz tarih formatı. YYYY-MM-DD kullanın.", "danger")
     return redirect(url_for("index"))
+
+
+@app.route("/download-db")
+def download_db():
+    """Send a copy of the SQLite database for download."""
+    try:
+        from src.db.storage import DB_PATH
+
+        if not DB_PATH.exists():
+            flash("Veritabanı bulunamadı.", "danger")
+            return redirect(url_for("index"))
+
+        filename = f"items-{datetime.now().strftime('%Y%m%d')}.db"
+        return send_file(
+            str(DB_PATH),
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/x-sqlite3",
+        )
+    except Exception:
+        traceback.print_exc()
+        flash("Veritabanı indirilemedi.", "danger")
+        return redirect(url_for("index"))
