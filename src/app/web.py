@@ -22,7 +22,11 @@ def index():
     if limit not in (50, 100, 200, 500):
         limit = 100
     search = request.args.get("q", "").strip()
-    items = get_items(limit=limit, search=search or None)
+    dept = request.args.get("dept", "").strip() or None
+    valid_depts = {"muhasebe", "isg", "ik", "lojistik", "it_siber", "kvkk"}
+    if dept and dept not in valid_depts:
+        dept = None
+    items = get_items(limit=limit, search=search or None, dept=dept)
     last_check = get_last_check_time()
     dept_counts = get_department_counts(items)
     today = date.today().isoformat()
@@ -31,6 +35,7 @@ def index():
         items=items,
         limit=limit,
         search=search,
+        dept=dept or "",
         last_check=last_check,
         dept_counts=dept_counts,
         today=today,

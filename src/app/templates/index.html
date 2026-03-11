@@ -8,8 +8,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background: #f4f6f9; }
-        .dept-card { border-radius: 12px; text-align: center; padding: 16px 10px; transition: box-shadow .2s; }
-        .dept-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+        .dept-card { border-radius: 12px; text-align: center; padding: 16px 10px; transition: box-shadow .2s; cursor: pointer; text-decoration: none; display: block; }
+        .dept-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.12); transform: translateY(-2px); }
+        .dept-card.active-filter { box-shadow: 0 0 0 3px rgba(0,0,0,.3); transform: translateY(-2px); }
         .dept-card h2 { font-size: 2.8rem; font-weight: 700; margin: 0; }
         .dept-card p { margin: 4px 0 0; font-size: .95rem; color: #555; }
         .badge-dept { font-size: .72rem; padding: 4px 7px; margin: 1px; }
@@ -63,67 +64,49 @@
 
         <!-- Department summary cards -->
         <div class="row mb-4 g-3">
+            {% set cards = [
+                ("muhasebe", "primary", "bi-calculator", "Muhasebe"),
+                ("isg", "danger", "bi-shield-check", "İş Güvenliği"),
+                ("ik", "success", "bi-people", "İnsan Kaynakları"),
+                ("lojistik", "warning", "bi-truck", "Lojistik"),
+                ("it_siber", "info", "bi-shield-lock", "IT / Siber"),
+                ("kvkk", "dark", "bi-file-earmark-lock", "KVKK"),
+            ] %}
+            {% for key, color, icon, label in cards %}
             <div class="col-6 col-md-2">
-                <div class="card dept-card border-primary">
+                <a href="?limit={{ limit }}{% if search %}&q={{ search }}{% endif %}{% if dept != key %}&dept={{ key }}{% endif %}"
+                   class="card dept-card border-{{ color }} {{ 'active-filter' if dept == key else '' }}">
                     <div class="card-body">
-                        <h2 class="text-primary">{{ dept_counts.muhasebe }}</h2>
-                        <p><i class="bi bi-calculator"></i> Muhasebe</p>
+                        <h2 class="text-{{ color }}">{{ dept_counts[key] }}</h2>
+                        <p><i class="bi {{ icon }}"></i> {{ label }}</p>
                     </div>
-                </div>
+                </a>
             </div>
-            <div class="col-6 col-md-2">
-                <div class="card dept-card border-danger">
-                    <div class="card-body">
-                        <h2 class="text-danger">{{ dept_counts.isg }}</h2>
-                        <p><i class="bi bi-shield-check"></i> İş Güvenliği</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-2">
-                <div class="card dept-card border-success">
-                    <div class="card-body">
-                        <h2 class="text-success">{{ dept_counts.ik }}</h2>
-                        <p><i class="bi bi-people"></i> İnsan Kaynakları</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-2">
-                <div class="card dept-card border-warning">
-                    <div class="card-body">
-                        <h2 class="text-warning">{{ dept_counts.lojistik }}</h2>
-                        <p><i class="bi bi-truck"></i> Lojistik</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-2">
-                <div class="card dept-card border-info">
-                    <div class="card-body">
-                        <h2 class="text-info">{{ dept_counts.it_siber }}</h2>
-                        <p><i class="bi bi-shield-lock"></i> IT / Siber</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-md-2">
-                <div class="card dept-card border-dark">
-                    <div class="card-body">
-                        <h2 class="text-dark">{{ dept_counts.kvkk }}</h2>
-                        <p><i class="bi bi-file-earmark-lock"></i> KVKK</p>
-                    </div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
+
+        {% if dept %}
+        <div class="alert alert-info py-2 d-flex align-items-center mb-3">
+            <i class="bi bi-funnel-fill me-2"></i>
+            <strong>{{ dept|upper }}</strong>&nbsp;departmanına göre filtreleniyor.
+            <a href="?limit={{ limit }}{% if search %}&q={{ search }}{% endif %}" class="btn btn-sm btn-outline-secondary ms-auto">
+                <i class="bi bi-x-lg"></i> Filtreyi Kaldır
+            </a>
+        </div>
+        {% endif %}
 
         <!-- Search & Filter bar -->
         <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
             <form action="/" method="GET" class="d-flex gap-2" style="max-width:400px; flex:1 1 auto;">
                 <input type="hidden" name="limit" value="{{ limit }}">
+                {% if dept %}<input type="hidden" name="dept" value="{{ dept }}">{% endif %}
                 <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" name="q" class="form-control" placeholder="Başlık, konu veya alt başlıkta ara…"
                            value="{{ search }}">
                     <button class="btn btn-outline-primary" type="submit">Ara</button>
                     {% if search %}
-                    <a href="?limit={{ limit }}" class="btn btn-outline-secondary" title="Aramayı temizle">
+                    <a href="?limit={{ limit }}{% if dept %}&dept={{ dept }}{% endif %}" class="btn btn-outline-secondary" title="Aramayı temizle">
                         <i class="bi bi-x-lg"></i>
                     </a>
                     {% endif %}
@@ -133,7 +116,7 @@
                 <span class="text-muted me-2">Göster:</span>
                 <div class="btn-group" role="group">
                     {% for n in [50, 100, 200, 500] %}
-                    <a href="?limit={{ n }}{% if search %}&q={{ search }}{% endif %}"
+                    <a href="?limit={{ n }}{% if search %}&q={{ search }}{% endif %}{% if dept %}&dept={{ dept }}{% endif %}"
                        class="btn btn-outline-secondary btn-sm filter-btn {{ 'active' if limit == n else '' }}">
                         Son {{ n }}
                     </a>

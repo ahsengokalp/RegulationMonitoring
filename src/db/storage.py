@@ -127,21 +127,30 @@ def save_run_log(run_day: date, items_found: int) -> None:
     conn.close()
 
 
-def get_items(limit: int = 100, search: Optional[str] = None) -> List[dict]:
+def get_items(limit: int = 100, search: Optional[str] = None, dept: Optional[str] = None) -> List[dict]:
     init_db()
     conn = _connect()
+
+    valid_depts = {"muhasebe", "isg", "ik", "lojistik", "it_siber", "kvkk"}
+    conditions: List[str] = []
+    params: list = []
+
     if search:
         like = f"%{search}%"
-        rows = conn.execute(
-            "SELECT * FROM items WHERE title LIKE ? OR section LIKE ? OR subsection LIKE ? "
-            "ORDER BY run_date DESC, id DESC LIMIT ?",
-            (like, like, like, limit),
-        ).fetchall()
-    else:
-        rows = conn.execute(
-            "SELECT * FROM items ORDER BY run_date DESC, id DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        conditions.append("(title LIKE ? OR section LIKE ? OR subsection LIKE ?)")
+        params.extend([like, like, like])
+
+    if dept and dept in valid_depts:
+        conditions.append(f"dept_{dept} = 1")
+
+    where = ""
+    if conditions:
+        where = "WHERE " + " AND ".join(conditions)
+
+    query = f"SELECT * FROM items {where} ORDER BY run_date DESC, id DESC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
