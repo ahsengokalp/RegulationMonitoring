@@ -8,6 +8,8 @@ from datetime import date, datetime
 from flask import Flask, flash, redirect, render_template, request, url_for
 
 from src.db.storage import get_department_counts, get_items, get_last_check_time
+from src.app.config import get_settings
+from src.notify.emailer import send_html_email
 
 template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 app = Flask(__name__, template_folder=template_dir)
@@ -42,9 +44,65 @@ def _fetch_worker(day: date) -> None:
 
         run(day=day, policies=default_policies())
         print(f"[INFO] Manual fetch completed for {day.isoformat()}")
+        # send admin notification if enabled
+        try:
+            settings = get_settings()
+            if settings.admin_mail_enabled and settings.admin_recipients:
+                recipients = [r.strip() for r in str(settings.admin_recipients).split(",") if r.strip()]
+                subject = f"Regülasyon: Veri çekme tamamlandı ({day.isoformat()})"
+                body = f"<p>Manuel olarak başlatılan veri çekme işlemi <strong>{day.isoformat()}</strong> başarıyla tamamlandı.</p>\n<p><a href=\"/\">Dashboard'ı görüntüleyin</a></p>"
+                try:
+                    send_html_email(
+                        smtp_host=settings.smtp_host,
+                        smtp_port=settings.smtp_port,
+                        smtp_user=settings.smtp_user,
+                        smtp_password=settings.smtp_password,
+                        smtp_secure=settings.smtp_secure,
+                        smtp_auth=settings.smtp_auth,
+                        smtp_tls_reject_unauthorized=settings.smtp_tls_reject_unauthorized,
+                        smtp_enabled=settings.smtp_enabled,
+                        mail_from=settings.mail_from,
+                        recipients=recipients,
+                        subject=subject,
+                        html_body=body,
+                    )
+                except Exception:
+                    print("[WARN] Admin notification email failed:")
+                    traceback.print_exc()
+        except Exception:
+            print("[WARN] Failed to prepare/send admin notification:")
+            traceback.print_exc()
     except Exception:
         print(f"[ERROR] Manual fetch failed for {day.isoformat()}")
         traceback.print_exc()
+        # send failure notification
+        try:
+            settings = get_settings()
+            if settings.admin_mail_enabled and settings.admin_recipients:
+                recipients = [r.strip() for r in str(settings.admin_recipients).split(",") if r.strip()]
+                subject = f"Regülasyon: Veri çekme başarısız ({day.isoformat()})"
+                body = f"<p>Manuel olarak başlatılan veri çekme işlemi <strong>{day.isoformat()}</strong> sırasında bir hata oluştu. Lütfen sunucu loglarını kontrol edin.</p>"
+                try:
+                    send_html_email(
+                        smtp_host=settings.smtp_host,
+                        smtp_port=settings.smtp_port,
+                        smtp_user=settings.smtp_user,
+                        smtp_password=settings.smtp_password,
+                        smtp_secure=settings.smtp_secure,
+                        smtp_auth=settings.smtp_auth,
+                        smtp_tls_reject_unauthorized=settings.smtp_tls_reject_unauthorized,
+                        smtp_enabled=settings.smtp_enabled,
+                        mail_from=settings.mail_from,
+                        recipients=recipients,
+                        subject=subject,
+                        html_body=body,
+                    )
+                except Exception:
+                    print("[WARN] Admin failure notification email also failed:")
+                    traceback.print_exc()
+        except Exception:
+            print("[WARN] Preparing failure notification also failed:")
+            traceback.print_exc()
 
 
 @app.route("/fetch", methods=["POST"])

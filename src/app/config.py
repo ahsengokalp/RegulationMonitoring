@@ -33,15 +33,15 @@ class Settings(BaseSettings):
     smtp_tls_reject_unauthorized: bool = Field(False, validation_alias="SMTP_TLS_REJECT_UNAUTHORIZED")
     smtp_enabled: bool = Field(True, validation_alias="SMTP_ENABLED")
 
-    mail_from: str = Field("Toolbox <docker@dikkan.com>", validation_alias="MAIL_FROM")
+    mail_from: str = Field("Regülasyon Uygulaması <regulation@dikkan.com>", validation_alias="MAIL_FROM")
     admin_mail_enabled: bool = Field(True, validation_alias="ADMIN_MAIL_ENABLED")
-    admin_recipients: str = Field("bt.stajyer@dikkan.com", validation_alias="ADMIN_RECIPIENTS")
-    isg_recipients: str = Field("suedagokalp150@gmail.com", validation_alias="ISG_RECIPIENTS")
-    ik_recipients: str = Field("suedagokalp150@gmail.com", validation_alias="IK_RECIPIENTS")
-    muhasebe_recipients: str = Field("suedagokalp150@gmail.com", validation_alias="MUHASEBE_RECIPIENTS")
-    lojistik_recipients: str = Field("suedagokalp150@gmail.com", validation_alias="LOJISTIK_RECIPIENTS")
-    it_siber_recipients: str = Field("", validation_alias="IT_SIBER_RECIPIENTS")
-    kvkk_recipients: str = Field("", validation_alias="KVKK_RECIPIENTS")
+    admin_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="ADMIN_RECIPIENTS")
+    isg_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="ISG_RECIPIENTS")
+    ik_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="IK_RECIPIENTS")
+    muhasebe_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="MUHASEBE_RECIPIENTS")
+    lojistik_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="LOJISTIK_RECIPIENTS")
+    it_siber_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="IT_SIBER_RECIPIENTS")
+    kvkk_recipients: str = Field("basar.sonmez@dikkan.com", validation_alias="KVKK_RECIPIENTS")
 
 
 def get_settings() -> Settings:
