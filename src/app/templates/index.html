@@ -444,6 +444,8 @@
                 var formData = new FormData();
                 formData.append('date', dateStr);
 
+                progressLbl.textContent = dateStr + ' çekiliyor...';
+
                 fetch('/fetch', {
                     method: 'POST',
                     body: formData,
@@ -452,28 +454,49 @@
                 })
                     .then(function(resp) { return resp.json(); })
                     .then(function(data) {
-                        if (data.ok) {
-                            logMsg(dateStr + ' → ' + (data.items_found || 0) + ' kayıt bulundu', 'ok');
-                            advanceToNext();
+                        if (data.ok && data.job_id) {
+                            /* Poll for job completion */
+                            pollJob(data.job_id, dateStr, attempt);
                         } else {
-                            if (attempt < maxRetries) {
-                                logMsg(dateStr + ' → hata, yeniden deneniyor (' + attempt + '/' + maxRetries + ')...', 'err');
-                                timerId = setTimeout(function() { attemptFetch(dateStr, attempt + 1); }, 5000);
-                            } else {
-                                logMsg(dateStr + ' → ' + maxRetries + ' denemede başarısız: ' + (data.error || 'bilinmeyen'), 'err');
-                                advanceToNext();
-                            }
+                            handleError(dateStr, attempt, data.error || 'bilinmeyen hata');
                         }
                     })
                     .catch(function(err) {
-                        if (attempt < maxRetries) {
-                            logMsg(dateStr + ' → bağlantı hatası, yeniden deneniyor (' + attempt + '/' + maxRetries + ')...', 'err');
-                            timerId = setTimeout(function() { attemptFetch(dateStr, attempt + 1); }, 5000);
-                        } else {
-                            logMsg(dateStr + ' → ' + maxRetries + ' denemede bağlantı kurulamadı: ' + err, 'err');
-                            advanceToNext();
-                        }
+                        handleError(dateStr, attempt, 'bağlantı hatası: ' + err);
                     });
+            }
+
+            function pollJob(jobId, dateStr, attempt) {
+                if (cancelled) { advanceToNext(); return; }
+                fetch('/fetch-status/' + jobId)
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        if (data.status === 'done') {
+                            logMsg(dateStr + ' → ' + (data.items_found || 0) + ' kayıt bulundu', 'ok');
+                            advanceToNext();
+                        } else if (data.status === 'error') {
+                            handleError(dateStr, attempt, data.error || 'sunucu hatası');
+                        } else {
+                            /* still running, poll again in 3s */
+                            progressLbl.textContent = dateStr + ' işleniyor...';
+                            timerId = setTimeout(function() { pollJob(jobId, dateStr, attempt); }, 3000);
+                        }
+                    })
+                    .catch(function() {
+                        /* polling failed, retry poll */
+                        timerId = setTimeout(function() { pollJob(jobId, dateStr, attempt); }, 5000);
+                    });
+            }
+
+            function handleError(dateStr, attempt, errMsg) {
+                var maxRetries = 5;
+                if (attempt < maxRetries) {
+                    logMsg(dateStr + ' → hata, yeniden deneniyor (' + attempt + '/' + maxRetries + ')...', 'err');
+                    timerId = setTimeout(function() { attemptFetch(dateStr, attempt + 1); }, 5000);
+                } else {
+                    logMsg(dateStr + ' → ' + maxRetries + ' denemede başarısız: ' + errMsg, 'err');
+                    advanceToNext();
+                }
             }
 
             function advanceToNext() {
@@ -482,8 +505,8 @@
 
                 if (currentIndex < totalDays && !cancelled) {
                     var remaining = totalDays - currentIndex;
-                    progressLbl.textContent = 'Sonraki gün için 10sn bekleniyor... (' + remaining + ' gün kaldı)';
-                    timerId = setTimeout(fetchNext, 10000);
+                    progressLbl.textContent = 'Sonraki gün için 5sn bekleniyor... (' + remaining + ' gün kaldı)';
+                    timerId = setTimeout(fetchNext, 5000);
                 } else {
                     fetchNext();
                 }

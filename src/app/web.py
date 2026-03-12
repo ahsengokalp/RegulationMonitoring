@@ -3,13 +3,19 @@ from __future__ import annotations
 import os
 import threading
 import traceback
+import uuid
 from datetime import date, datetime
+from typing import Dict
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for, send_file
 
 from src.db.storage import get_department_counts, get_fetched_dates, get_items, get_last_check_time, get_total_count
 from src.app.config import get_settings
 from src.notify.emailer import send_html_email
+
+# Track background fetch jobs: job_id -> {"status": "running"|"done"|"error", "items_found": N, "error": "..."}
+_fetch_jobs: Dict[str, dict] = {}
+_fetch_jobs_lock = threading.Lock()
 
 template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -113,9 +119,23 @@ def _fetch_worker(day: date) -> None:
             traceback.print_exc()
 
 
+def _async_fetch_worker(job_id: str, day: date) -> None:
+    """Run pipeline in background, store result in _fetch_jobs."""
+    try:
+        from src.pipeline.run_daily import default_policies, run
+
+        report = run(day=day, policies=default_policies())
+        print(f"[INFO] Fetch completed for {day.isoformat()} ({report.total_items} items)")
+        with _fetch_jobs_lock:
+            _fetch_jobs[job_id] = {"status": "done", "items_found": report.total_items}
+    except Exception:
+        traceback.print_exc()
+        with _fetch_jobs_lock:
+            _fetch_jobs[job_id] = {"status": "error", "error": f"{day.isoformat()} çekilirken hata oluştu."}
+
+
 @app.route("/fetch", methods=["POST"])
 def fetch():
-    # Check if this is an AJAX/JSON request (from batch fetch JS)
     is_ajax = (
         request.headers.get("X-Requested-With") == "XMLHttpRequest"
         or "application/json" in (request.headers.get("Accept") or "")
@@ -135,22 +155,14 @@ def fetch():
         return redirect(url_for("index"))
 
     if is_ajax:
-        # Synchronous execution for batch/AJAX requests so JS knows when it's done
-        try:
-            from src.pipeline.run_daily import default_policies, run
-
-            report = run(day=day, policies=default_policies())
-            print(f"[INFO] Fetch completed for {day.isoformat()} ({report.total_items} items)")
-            return jsonify({
-                "ok": True,
-                "date": day.isoformat(),
-                "items_found": report.total_items,
-            })
-        except Exception:
-            traceback.print_exc()
-            return jsonify({"ok": False, "error": f"{day.isoformat()} çekilirken hata oluştu."}), 500
+        # Start background job and return job_id for polling
+        job_id = uuid.uuid4().hex[:12]
+        with _fetch_jobs_lock:
+            _fetch_jobs[job_id] = {"status": "running"}
+        thread = threading.Thread(target=_async_fetch_worker, args=(job_id, day), daemon=True)
+        thread.start()
+        return jsonify({"ok": True, "job_id": job_id, "date": day.isoformat()})
     else:
-        # Background execution for manual single-day fetch (form submit)
         thread = threading.Thread(target=_fetch_worker, args=(day,), daemon=True)
         thread.start()
         flash(
@@ -159,6 +171,16 @@ def fetch():
             "info",
         )
         return redirect(url_for("index"))
+
+
+@app.route("/fetch-status/<job_id>")
+def fetch_status(job_id):
+    """Poll for job completion."""
+    with _fetch_jobs_lock:
+        job = _fetch_jobs.get(job_id)
+    if not job:
+        return jsonify({"status": "unknown"}), 404
+    return jsonify(job)
 
 
 @app.route("/fetched-dates")
