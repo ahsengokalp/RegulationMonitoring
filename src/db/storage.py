@@ -177,6 +177,15 @@ def get_items(limit: int = 100, search: Optional[str] = None, dept: Optional[str
     return [dict(r) for r in rows]
 
 
+def get_total_count() -> int:
+    """Return total number of items in the database."""
+    init_db()
+    conn = _connect()
+    count = conn.execute("SELECT COUNT(*) FROM items").fetchone()[0]
+    conn.close()
+    return count
+
+
 def get_last_check_time() -> Optional[str]:
     init_db()
     conn = _connect()

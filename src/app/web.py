@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for, send_file
 
-from src.db.storage import get_department_counts, get_fetched_dates, get_items, get_last_check_time
+from src.db.storage import get_department_counts, get_fetched_dates, get_items, get_last_check_time, get_total_count
 from src.app.config import get_settings
 from src.notify.emailer import send_html_email
 
@@ -30,6 +30,7 @@ def index():
     items = get_items(limit=limit, search=search or None, dept=dept)
     last_check = get_last_check_time()
     dept_counts = get_department_counts(items)
+    total_count = get_total_count()
     today = date.today().isoformat()
     return render_template(
         "index.html",
@@ -39,6 +40,7 @@ def index():
         dept=dept or "",
         last_check=last_check,
         dept_counts=dept_counts,
+        total_count=total_count,
         today=today,
     )
 

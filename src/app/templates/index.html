@@ -47,11 +47,30 @@
         {% endif %}
         {% endwith %}
 
-        <!-- Top info bar: last check + date picker -->
+        <!-- Top info bar: stats + date picker -->
         <div class="row mb-3 align-items-center">
-            <div class="col-md-6 last-check">
-                <i class="bi bi-clock-history"></i> Son kontrol:
-                <strong>{{ last_check if last_check else 'Henüz kontrol yapılmadı' }}</strong>
+            <div class="col-md-6">
+                <div class="d-flex flex-wrap gap-3 align-items-center" style="font-size:.9rem;">
+                    <span title="Son kontrol zamanı">
+                        <i class="bi bi-clock-history text-secondary"></i> <strong>Son Kontrol:</strong>
+                        {{ last_check if last_check else 'Henüz yapılmadı' }}
+                    </span>
+                    <span class="text-muted">|</span>
+                    <span title="Veritabanındaki toplam kayıt">
+                        <i class="bi bi-database text-secondary"></i> <strong>Toplam:</strong>
+                        {{ total_count }} kayıt
+                    </span>
+                    <span class="text-muted">|</span>
+                    <span title="Şu an gösterilen kayıt sayısı">
+                        <i class="bi bi-list-ol text-secondary"></i> <strong>Gösterilen:</strong>
+                        {{ items|length }} kayıt
+                    </span>
+                    <span class="text-muted">|</span>
+                    <span title="Otomatik kontrol sıklığı">
+                        <i class="bi bi-arrow-repeat text-secondary"></i> <strong>Kontrol Sıklığı:</strong>
+                        Saatte bir
+                    </span>
+                </div>
             </div>
             <div class="col-md-6">
                 <div class="d-flex gap-2 justify-content-end">
