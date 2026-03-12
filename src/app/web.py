@@ -12,7 +12,8 @@ from src.app.config import get_settings
 from src.notify.emailer import send_html_email
 
 template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
-app = Flask(__name__, template_folder=template_dir)
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 app.secret_key = "regulation-monitor-secret-key"
 
 
