@@ -28,6 +28,28 @@ HIGH_SIGNAL = [
     r"\belektronik\s*imza\b|\be-imza\b",
     r"\belog\b|\blog\s*kayd\b",
     r"\bsertifika\s*otoritesi\b",
+    r"\byazılım\s*geliştirici\b",
+    r"\bmobil\s*uygulama\b",
+    r"\bweb\s*geliştirme\b",
+    r"\bprogramlama\b",
+    r"\bbulut\s*bilişim\b",
+    r"\bsistem\s*yönetimi\b",
+    r"\bERP\b",
+    r"\bSCADA\b",
+    r"\bendüstriyel\s*otomasyon\b",
+    r"\bsiber\s*olay\b",
+    r"\bsızma\s*testi\b",
+    r"\bzafiyet\b",
+    r"\bgüvenlik\s*duvarı\b",
+    r"\bşifreleme\b|\bkriptografi\b",
+    r"\bSSL\b|\bTLS\b",
+    r"\bVPN\b",
+    r"\bsunucu\b",
+    r"\bveritabanı\b|\bveri\s*tabanı\b",
+    r"\bbüyük\s*veri\b",
+    r"\bnesnelerin\s*interneti\b|\bIoT\b",
+    r"\b5G\b",
+    r"\belektronik\s*ticaret\b|\be-ticaret\b",
 ]
 
 MID_SIGNAL = [
@@ -37,6 +59,9 @@ MID_SIGNAL = [
     r"\belektronik\b",
     r"\byönetmelik\b",
     r"\btebliğ\b",
+    r"\bteknoloji\b",
+    r"\bsiber\b",
+    r"\botomasyon\b",
 ]
 
 

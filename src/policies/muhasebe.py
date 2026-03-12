@@ -19,6 +19,28 @@ HIGH_SIGNAL = [
     r"\bvuk\b|\bvergi\s*usul\b",
     r"\bfaiz\b|\bgecikme\s*zammı\b",
     r"\bharç\b",
+    r"\bdamga\s*vergisi\b",
+    r"\bemlak\s*vergisi\b",
+    r"\bbeyanname\b",
+    r"\bba\s*bs\b|\bba-bs\b",
+    r"\bteşvik\b|\byatırım\s*teşvik\b",
+    r"\bsgk\s*prim\b",
+    r"\bamortism(an|a)\b",
+    r"\benflasyon\s*muhasebesi\b|\benflasyon\s*düzeltmesi\b",
+    r"\btfrs\b|\btms\b|\bmuhasebe\s*standart\b",
+    r"\bbağımsız\s*denetim\b",
+    r"\bGİB\b|\bgelir\s*idaresi\b",
+    r"\bmatrah\b",
+    r"\bstopaj\b",
+    r"\bözelge\b",
+    r"\btcmb\b|\bmerkez\s*bankası\b",
+    r"\bkur\s*farkı\b",
+    r"\bkâr\s*dağıtımı\b",
+    r"\btasfiye\b",
+    r"\bkonkordato\b|\biflas\b",
+    r"\bserbest\s*bölge\b",
+    r"\bindirim\b|\bvergi\s*indirimi\b",
+    r"\bSPK\b|\bsermaye\s*piyasası\b",
 ]
 
 MID_SIGNAL = [
@@ -26,6 +48,9 @@ MID_SIGNAL = [
     r"\btebliğ\b",
     r"\bcumhurbaşkanı\s*kararı\b",
     r"\bkarar\b",
+    r"\bfinans\b",
+    r"\bbütçe\b",
+    r"\bmali\b",
 ]
 
 

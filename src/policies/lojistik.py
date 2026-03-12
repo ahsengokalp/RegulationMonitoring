@@ -10,7 +10,7 @@ from src.policies.base import DepartmentPolicy, PolicyDecision
 HIGH_SIGNAL = [
     r"\bgümrük\b",
     r"\bithalat\b|\bihracat\b",
-    r"\bgtip\b",
+    r"\bgtip\b|\bgümrük\s*tarife\b",
     r"\blojistik\b",
     r"\btaşımacılık\b|\bnakliye\b",
     r"\btransit\b",
@@ -18,12 +18,36 @@ HIGH_SIGNAL = [
     r"\bliman\b",
     r"\badr\b|\btehlikeli\s*madde\b",
     r"\bmenşe\b",
+    r"\bdış\s*ticaret\b",
+    r"\ba\.tr\b|\beur\.1\b",
+    r"\bnavlun\b",
+    r"\bkonşimento\b",
+    r"\bkonteyner\b",
+    r"\bserbest\s*ticaret\b",
+    r"\bticaret\s*anlaşması\b",
+    r"\banti-damping\b|\bdamping\b",
+    r"\bkorunma\s*önlemi\b",
+    r"\bkota\b",
+    r"\bürün\s*güvenliği\b",
+    r"\bce\s*işareti\b|\bCE\b",
+    r"\bstandart\s*tebliğ\b",
+    r"\btse\b|\btürk\s*standart\b",
+    r"\btedarik\s*zinciri\b",
+    r"\bkabotaj\b",
+    r"\bdeniz\s*ticareti\b",
+    r"\bhavayolu\b|\bhavacılık\b",
+    r"\bdemiryolu\b",
+    r"\bkarayolu\b|\bkarayolları\b",
+    r"\btaşıma\s*belgesi\b",
+    r"\bözet\s*beyan\b",
 ]
 
 MID_SIGNAL = [
     r"\byönetmelik\b",
     r"\btebliğ\b",
     r"\bkarar\b",
+    r"\btaşıma\b",
+    r"\bticaret\b",
 ]
 
 

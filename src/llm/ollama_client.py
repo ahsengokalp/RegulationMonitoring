@@ -114,21 +114,36 @@ Sektörel kurallar:
 - Kamu kurum içi kadro/atama/teşkilat düzenlemesi genelde hepsi false; istisna: çalışma hayatı/iş hukuku/SGK gibi genel bir yükümlülük içeriyorsa IK=true olabilir.
 
 Departman Tanımları (fabrika bağlamı):
-- ISG: iş sağlığı ve güvenliği, 6331, risk değerlendirme, iş kazası, acil durum, OSGB vb.
-- IK: işe alım, personel, ücret, izin, SGK, çalışma izni, iş kanunu, disiplin vb.
-- MUHASEBE: vergi, KDV, e-fatura/e-defter, finans, faiz, karşılık, muhasebe standartları vb.
-- LOJISTIK: gümrük, GTIP, ithalat/ihracat, dış ticaret mevzuatı, antrepo, ADR, taşıma, tedarik vb.
-- IT_SIBER: siber güvenlik, bilgi güvenliği, bilişim, elektronik haberleşme, BTK, SOME, bilgi teknolojileri, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001 vb.
-- KVKK: kişisel veri, KVKK, 6698, veri sorumlusu, veri işleyen, açık rıza, aydınlatma yükümlülüğü, veri ihlali, veri koruma, anonimleştirme, veri aktarımı vb.
+- ISG: iş sağlığı ve güvenliği, 6331, risk değerlendirme, iş kazası, meslek hastalığı, acil durum, OSGB, KKD, yangın güvenliği, çevre kirliliği, atık yönetimi, emisyon, çevresel etki değerlendirmesi (ÇED), tehlikeli atık, iş müfettişi, maruziyet, patlama korunma (ATEX), asbest, gürültü, kimyasal madde vb.
+- IK: işe alım, personel, ücret, izin, SGK, çalışma izni, iş kanunu (4857), disiplin, iş sözleşmesi, kıdem/ihbar tazminatı, sendika, toplu iş sözleşmesi, emeklilik, engelli istihdamı, staj, çıraklık, mesleki yeterlilik, mesleki eğitim, İŞKUR, arabuluculuk, iş mahkemesi, bordro, kısa çalışma vb.
+- MUHASEBE: vergi, KDV, ÖTV, gelir/kurumlar vergisi, damga vergisi, emlak vergisi, beyanname, BA-BS, teşvik, SGK prim, amortisman, enflasyon muhasebesi, TFRS/TMS, bağımsız denetim, GİB, matrah, stopaj, özelge, TCMB, kur farkı, kâr dağıtımı, tasfiye, konkordato, iflas, serbest bölge, SPK, sermaye piyasası, e-fatura/e-defter/e-arşiv vb.
+- LOJISTIK: gümrük, GTIP, ithalat/ihracat, dış ticaret, antrepo, ADR, taşıma, tedarik zinciri, A.TR, EUR.1, navlun, konşimento, konteyner, anti-damping, kota, ürün güvenliği, CE işareti, TSE, kabotaj, deniz ticareti, havacılık, demiryolu, karayolu, özet beyan vb.
+- IT_SIBER: siber güvenlik, bilgi güvenliği, bilişim, elektronik haberleşme, BTK, SOME, bilgi teknolojileri, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001, ERP, SCADA, endüstriyel otomasyon, bulut bilişim, IoT, 5G, e-ticaret, yazılım, sunucu, veritabanı, büyük veri, şifreleme, VPN, SSL/TLS vb.
+- KVKK: kişisel veri, KVKK, 6698, veri sorumlusu, veri işleyen, açık rıza, aydınlatma yükümlülüğü, veri ihlali, veri koruma, anonimleştirme, veri aktarımı, veri güvenliği, biyometrik veri, özel nitelikli kişisel veri, GDPR, gizlilik, mahremiyet, kimlik doğrulama, elektronik kimlik vb.
+
+ISG guard:
+ISG=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
+iş sağlığı, iş güvenliği, İSG, 6331, OSGB, risk değerlendirme, iş kazası, meslek hastalığı, işyeri hekimi, iş güvenliği uzmanı, KKD, kişisel koruyucu, acil durum, tehlikeli, çalışma ortamı, iş ekipmanı, maruziyet, patlama, ATEX, yüksekte çalışma, asbest, gürültü, kimyasal madde, iş müfettişi, iş teftiş, yangın, ilk yardım, çevre sağlığı, çevre kirliliği, atık yönetimi, atık, çevre izni, ÇED, çevresel etki, emisyon, tehlikeli atık, toplum sağlığı.
+Bu kelimeler yoksa ISG=false.
+
+IK guard:
+IK=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
+SGK, sosyal güvenlik, istihdam, mesai, fazla çalışma, yıllık izin, ücret, asgari ücret, personel, iş kanunu, 4857, çalışma izni, iş sözleşmesi, kıdem tazminatı, ihbar tazminatı, sendika, toplu iş sözleşmesi, işten çıkarma, fesih, işe iade, emeklilik, prim, sigorta prim, engelli istihdamı, staj, stajyer, çırak, çıraklık, mesleki yeterlilik, mesleki eğitim, disiplin, işçi, işveren, İŞKUR, iş mahkemesi, arabuluculuk, kısa çalışma, ücretsiz izin, bordro.
+Bu kelimeler yoksa IK=false.
+
+MUHASEBE guard:
+MUHASEBE=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
+vergi, KDV, ÖTV, gelir vergisi, kurumlar vergisi, damga vergisi, emlak vergisi, tevkifat, muhasebe, defter, e-defter, e-fatura, e-arşiv, VUK, vergi usul, faiz, gecikme zammı, harç, beyanname, BA-BS, teşvik, yatırım teşvik, SGK prim, amortisman, enflasyon muhasebesi, enflasyon düzeltmesi, TFRS, TMS, muhasebe standart, bağımsız denetim, GİB, gelir idaresi, matrah, stopaj, özelge, TCMB, merkez bankası, kur farkı, kâr dağıtımı, tasfiye, konkordato, iflas, serbest bölge, vergi indirimi, SPK, sermaye piyasası.
+Bu kelimeler yoksa MUHASEBE=false.
 
 Lojistik guard:
 LOJISTIK=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
-gümrük, GTİP, ithalat, ihracat, dış ticaret, antrepo, A.TR, EUR.1, navlun, konşimento, ADR, taşıma, nakliye, liman, konteyner.
+gümrük, GTİP, gümrük tarife, ithalat, ihracat, dış ticaret, antrepo, A.TR, EUR.1, navlun, konşimento, ADR, taşıma, nakliye, liman, konteyner, serbest ticaret, ticaret anlaşması, anti-damping, damping, korunma önlemi, kota, ürün güvenliği, CE işareti, TSE, Türk standardı, tedarik zinciri, kabotaj, deniz ticareti, havacılık, demiryolu, karayolu, taşıma belgesi, özet beyan, lojistik, taşımacılık, transit, menşe.
 Bu kelimeler yoksa LOJISTIK=false.
 
 IT_SIBER guard:
 IT_SIBER=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
-siber, bilgi güvenliği, bilişim, BTK, SOME, elektronik haberleşme, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001, yazılım, yazılım geliştirici, bilgi teknolojileri, IT, bilgisayar, ağ güvenliği, veri tabanı, programlama, mobil uygulama, web geliştirme, sistem yönetimi, bulut bilişim.
+siber, bilgi güvenliği, bilişim, BTK, SOME, elektronik haberleşme, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001, yazılım, yazılım geliştirici, bilgi teknolojileri, IT, bilgisayar, ağ güvenliği, veri tabanı, programlama, mobil uygulama, web geliştirme, sistem yönetimi, bulut bilişim, ERP, SCADA, endüstriyel otomasyon, IoT, nesnelerin interneti, 5G, e-ticaret, elektronik ticaret, sunucu, büyük veri, şifreleme, kriptografi, VPN, SSL, TLS, güvenlik duvarı, zafiyet, sızma testi, siber olay.
 Bu kelimeler yoksa IT_SIBER=false.
 
 KVKK guard:

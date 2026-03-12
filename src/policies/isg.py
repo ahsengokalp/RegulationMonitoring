@@ -11,6 +11,7 @@ HIGH_SIGNAL = [
     r"\biş\s*sağlığı\b",
     r"\biş\s*güvenliği\b",
     r"\bİSG\b",
+    r"\bOSGB\b",
     r"\b6331\b",
     r"\brisk\s*değerlendirm(e|esi)\b",
     r"\biş\s*kazası\b",
@@ -20,6 +21,26 @@ HIGH_SIGNAL = [
     r"\bkişisel\s*koruyucu\b|\bKKD\b",
     r"\bacil\s*durum\b",
     r"\btehlikeli\b|\bçok\s*tehlikeli\b",
+    r"\bçalışma\s*ortamı\b",
+    r"\biş\s*ekipmanı\b",
+    r"\bmaruziyet\b",
+    r"\bpatlamadan\s*korunma\b|\bATEX\b",
+    r"\byüksekte\s*çalışma\b",
+    r"\basbestle\b|\basbest\b",
+    r"\bgürültü\b",
+    r"\bkimyasal\s*madde\b",
+    r"\biş\s*müfettiş\b",
+    r"\biş\s*teftiş\b",
+    r"\btoplum\s*sağlığı\b",
+    r"\byangın\b|\byangın\s*güvenliği\b",
+    r"\bilk\s*yardım\b",
+    r"\bçevre\s*sağlığı\b",
+    r"\bçevre\s*kirliliği\b",
+    r"\batık\s*yönetimi\b|\batık\b",
+    r"\bçevre\s*izni\b",
+    r"\bçed\b|\bçevresel\s*etki\b",
+    r"\bemisyon\b",
+    r"\btehlikeli\s*atık\b",
 ]
 
 MID_SIGNAL = [
@@ -28,6 +49,9 @@ MID_SIGNAL = [
     r"\bidari\s*para\s*cezası\b",
     r"\bteftiş\b",
     r"\beğitim\b",
+    r"\bsertifika\b",
+    r"\bkoruyucu\b",
+    r"\bönlem\b",
 ]
 
 

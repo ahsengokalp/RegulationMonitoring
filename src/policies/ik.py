@@ -8,7 +8,7 @@ from src.policies.base import DepartmentPolicy, PolicyDecision
 
 
 HIGH_SIGNAL = [
-    r"\bçalışma\b",
+    r"\bçalışma\s*hayatı\b",
     r"\bsgk\b",
     r"\bsosyal\s*güvenlik\b",
     r"\bistihdam\b",
@@ -18,6 +18,27 @@ HIGH_SIGNAL = [
     r"\bpersonel\b",
     r"\biş\s*kanunu\b|\b4857\b",
     r"\byabancı\s*çalışma\b|\bçalışma\s*izni\b",
+    r"\biş\s*sözleşmesi\b",
+    r"\bkıdem\s*tazminatı\b",
+    r"\bihbar\s*tazminatı\b",
+    r"\bsendika\b|\btoplu\s*iş\s*sözleşmesi\b",
+    r"\bişten\s*çıkarma\b|\bfesih\b",
+    r"\bişe\s*iade\b",
+    r"\bemeklilik\b|\bemekli\b",
+    r"\bprim\b|\bsigorta\s*prim\b",
+    r"\bözürlü\b|\bengelli\b|\bengelli\s*istihdamı\b",
+    r"\bstajyer\b|\bstaj\b",
+    r"\bçırak\b|\bçıraklık\b",
+    r"\bmesleki\s*yeterlilik\b",
+    r"\bmesleki\s*eğitim\b",
+    r"\bdisiplin\b",
+    r"\bişçi\b|\bişveren\b",
+    r"\bİŞKUR\b",
+    r"\biş\s*mahkemesi\b",
+    r"\barabuluculuk\b",
+    r"\bkısa\s*çalışma\b",
+    r"\bücretsiz\s*izin\b",
+    r"\bbordrolu\b|\bbordro\b",
 ]
 
 MID_SIGNAL = [
@@ -25,6 +46,9 @@ MID_SIGNAL = [
     r"\byönetmelik\b",
     r"\btebliğ\b",
     r"\bkurul\b",
+    r"\bçalışma\b",
+    r"\bçalışan\b",
+    r"\binsan\s*kaynakları\b",
 ]
 
 
