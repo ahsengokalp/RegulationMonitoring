@@ -140,6 +140,15 @@ def save_run_log(run_day: date, items_found: int) -> None:
     conn.close()
 
 
+def get_fetched_dates() -> Set[str]:
+    """Return set of date strings (YYYY-MM-DD) already present in run_log."""
+    init_db()
+    conn = _connect()
+    rows = conn.execute("SELECT DISTINCT run_date FROM run_log").fetchall()
+    conn.close()
+    return {r[0] for r in rows}
+
+
 def get_items(limit: int = 100, search: Optional[str] = None, dept: Optional[str] = None) -> List[dict]:
     init_db()
     conn = _connect()

@@ -408,24 +408,20 @@
             logMsg(startDate + ' → ' + endDate + ' (' + totalDays + ' gün)', '');
 
             var currentIndex = 0;
+            var skippedDays = 0;
+            var fetchedDatesSet = {};
 
-            function fetchNext() {
-                if (cancelled || currentIndex >= totalDays) {
-                    if (!cancelled) {
-                        logMsg('Tüm günler tamamlandı!', 'ok');
-                        progressLbl.textContent = 'Tamamlandı!';
-                        progressBar.classList.remove('progress-bar-animated');
-                        progressBar.classList.replace('bg-primary', 'bg-success');
-                    }
-                    setRunning(false);
-                    timerId = null;
-                    return;
-                }
+            /* Load already-fetched dates, then start */
+            fetch('/fetched-dates')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    (data.dates || []).forEach(function(d) { fetchedDatesSet[d] = true; });
+                    fetchNext();
+                })
+                .catch(function() { fetchNext(); });
 
-                var dateStr = addDays(startDate, currentIndex);
-                progressLbl.textContent = dateStr + ' çekiliyor...';
-                logMsg(dateStr + ' gönderiliyor...', '');
-
+            function attemptFetch(dateStr, attempt) {
+                var maxRetries = 5;
                 var formData = new FormData();
                 formData.append('date', dateStr);
 
@@ -439,28 +435,71 @@
                     .then(function(data) {
                         if (data.ok) {
                             logMsg(dateStr + ' → ' + (data.items_found || 0) + ' kayıt bulundu', 'ok');
+                            advanceToNext();
                         } else {
-                            logMsg(dateStr + ' → hata: ' + (data.error || 'bilinmeyen'), 'err');
+                            if (attempt < maxRetries) {
+                                logMsg(dateStr + ' → hata, yeniden deneniyor (' + attempt + '/' + maxRetries + ')...', 'err');
+                                timerId = setTimeout(function() { attemptFetch(dateStr, attempt + 1); }, 5000);
+                            } else {
+                                logMsg(dateStr + ' → ' + maxRetries + ' denemede başarısız: ' + (data.error || 'bilinmeyen'), 'err');
+                                advanceToNext();
+                            }
                         }
                     })
                     .catch(function(err) {
-                        logMsg(dateStr + ' → bağlantı hatası: ' + err, 'err');
-                    })
-                    .finally(function() {
-                        currentIndex++;
-                        setProgress(currentIndex, totalDays);
-
-                        if (currentIndex < totalDays && !cancelled) {
-                            var remaining = totalDays - currentIndex;
-                            progressLbl.textContent = 'Sonraki gün için 10sn bekleniyor... (' + remaining + ' gün kaldı)';
-                            timerId = setTimeout(fetchNext, 10000);
+                        if (attempt < maxRetries) {
+                            logMsg(dateStr + ' → bağlantı hatası, yeniden deneniyor (' + attempt + '/' + maxRetries + ')...', 'err');
+                            timerId = setTimeout(function() { attemptFetch(dateStr, attempt + 1); }, 5000);
                         } else {
-                            fetchNext();
+                            logMsg(dateStr + ' → ' + maxRetries + ' denemede bağlantı kurulamadı: ' + err, 'err');
+                            advanceToNext();
                         }
                     });
             }
 
-            fetchNext();
+            function advanceToNext() {
+                currentIndex++;
+                setProgress(currentIndex - skippedDays, totalDays - skippedDays);
+
+                if (currentIndex < totalDays && !cancelled) {
+                    var remaining = totalDays - currentIndex;
+                    progressLbl.textContent = 'Sonraki gün için 10sn bekleniyor... (' + remaining + ' gün kaldı)';
+                    timerId = setTimeout(fetchNext, 10000);
+                } else {
+                    fetchNext();
+                }
+            }
+
+            function fetchNext() {
+                if (cancelled || currentIndex >= totalDays) {
+                    if (!cancelled) {
+                        logMsg('Tüm günler tamamlandı!' + (skippedDays > 0 ? ' (' + skippedDays + ' gün atlandı)' : ''), 'ok');
+                        progressLbl.textContent = 'Tamamlandı!';
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.replace('bg-primary', 'bg-success');
+                    }
+                    setRunning(false);
+                    timerId = null;
+                    return;
+                }
+
+                var dateStr = addDays(startDate, currentIndex);
+
+                /* Skip already fetched dates */
+                if (fetchedDatesSet[dateStr]) {
+                    logMsg(dateStr + ' → daha önce çekilmiş, atlanıyor', '');
+                    skippedDays++;
+                    currentIndex++;
+                    setProgress(currentIndex - skippedDays, totalDays - skippedDays);
+                    /* Skip immediately, no delay */
+                    fetchNext();
+                    return;
+                }
+
+                progressLbl.textContent = dateStr + ' çekiliyor...';
+                logMsg(dateStr + ' gönderiliyor...', '');
+                attemptFetch(dateStr, 1);
+            }
         });
 
         /* Reset modal state when closed */

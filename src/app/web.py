@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, url_for, send_file
 
-from src.db.storage import get_department_counts, get_items, get_last_check_time
+from src.db.storage import get_department_counts, get_fetched_dates, get_items, get_last_check_time
 from src.app.config import get_settings
 from src.notify.emailer import send_html_email
 
@@ -157,6 +157,13 @@ def fetch():
             "info",
         )
         return redirect(url_for("index"))
+
+
+@app.route("/fetched-dates")
+def fetched_dates():
+    """Return JSON list of dates already fetched."""
+    dates = sorted(get_fetched_dates())
+    return jsonify({"dates": dates})
 
 
 @app.route("/download-db")
