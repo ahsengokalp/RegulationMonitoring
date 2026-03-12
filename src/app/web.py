@@ -19,7 +19,7 @@ app.secret_key = "regulation-monitor-secret-key"
 @app.route("/")
 def index():
     limit = request.args.get("limit", 100, type=int)
-    if limit not in (50, 100, 200, 500):
+    if limit not in (50, 100, 200, 500, 1000, 2000):
         limit = 100
     search = request.args.get("q", "").strip()
     dept = request.args.get("dept", "").strip() or None

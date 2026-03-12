@@ -121,7 +121,7 @@
             <div>
                 <span class="text-muted me-2">Göster:</span>
                 <div class="btn-group" role="group">
-                    {% for n in [50, 100, 200, 500] %}
+                    {% for n in [50, 100, 200, 500, 1000, 2000] %}
                     <a href="?limit={{ n }}{% if search %}&q={{ search }}{% endif %}{% if dept %}&dept={{ dept }}{% endif %}"
                        class="btn btn-outline-secondary btn-sm filter-btn {{ 'active' if limit == n else '' }}">
                         Son {{ n }}
