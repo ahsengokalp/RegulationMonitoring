@@ -19,6 +19,7 @@
         .table td.title-col { max-width: 420px; }
         .filter-btn.active { font-weight: 600; }
         .last-check { font-size: .9rem; }
+        #detailModalBody { white-space: pre-wrap; font-size: .88rem; max-height: 70vh; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -52,13 +53,18 @@
                 <strong>{{ last_check if last_check else 'Henüz kontrol yapılmadı' }}</strong>
             </div>
             <div class="col-md-6">
-                <form action="/fetch" method="POST" class="d-flex gap-2 justify-content-end">
-                    <input type="date" name="date" class="form-control" style="max-width:200px"
-                           value="{{ today }}" required>
-                    <button type="submit" class="btn btn-primary text-nowrap">
-                        <i class="bi bi-download"></i> Veri Çek
+                <div class="d-flex gap-2 justify-content-end">
+                    <form action="/fetch" method="POST" class="d-flex gap-2">
+                        <input type="date" name="date" class="form-control" style="max-width:200px"
+                               value="{{ today }}" required>
+                        <button type="submit" class="btn btn-primary text-nowrap">
+                            <i class="bi bi-download"></i> Veri Çek
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-outline-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#batchModal">
+                        <i class="bi bi-calendar-range"></i> Toplu Çek
                     </button>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -139,6 +145,7 @@
                                 <th class="text-center">Kaynak</th>
                                 <th class="text-center">PDF</th>
                                 <th>Departmanlar</th>
+                                <th class="text-center">Ayrıntı</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -194,11 +201,22 @@
                                     </span>
                                     {% endif %}
                                 </td>
+                                <td class="text-center">
+                                    {% if item.detail_text %}
+                                    <button class="btn btn-outline-secondary btn-sm btn-detail"
+                                            data-title="{{ item.title }}"
+                                            data-url="{{ item.url }}"
+                                            data-text="{{ item.detail_text[:5000] | e }}"
+                                            title="İçeriği Görüntüle">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% endfor %}
                             {% if not items %}
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                                     Henüz kayıt bulunmamaktadır. Yukarıdaki "Veri Çek" butonu ile başlayın.
                                 </td>
@@ -220,6 +238,234 @@
         </footer>
     </div>
 
+    <!-- Batch Fetch Modal -->
+    <div class="modal fade" id="batchModal" tabindex="-1" aria-labelledby="batchModalLabel" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="batchModalLabel">
+                        <i class="bi bi-calendar-range"></i> Toplu Veri Çek
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat" id="batchCloseBtn"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label for="batchStart" class="form-label fw-semibold">Başlangıç Tarihi</label>
+                            <input type="date" id="batchStart" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="batchEnd" class="form-label fw-semibold">Bitiş Tarihi</label>
+                            <input type="date" id="batchEnd" class="form-control" required>
+                        </div>
+                    </div>
+                    <div id="batchStatus" style="display:none;">
+                        <hr>
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-semibold" id="batchProgressLabel">Hazırlanıyor...</span>
+                            <span class="badge bg-secondary" id="batchCounter">0 / 0</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 22px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="batchProgressBar"
+                                 role="progressbar" style="width: 0%;">0%</div>
+                        </div>
+                        <div id="batchLog" class="border rounded p-2 bg-light" style="max-height:200px; overflow-y:auto; font-size:.82rem; font-family:monospace;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="batchCancelBtn">Kapat</button>
+                    <button type="button" class="btn btn-primary" id="batchStartBtn">
+                        <i class="bi bi-play-fill"></i> Başlat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <a id="detailModalUrl" href="#" target="_blank" rel="noopener" class="text-muted small">
+                            <i class="bi bi-box-arrow-up-right"></i> Kaynağı Aç
+                        </a>
+                    </div>
+                    <hr>
+                    <div id="detailModalBody"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    /* --- Detail Modal --- */
+    var detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+    document.querySelectorAll('.btn-detail').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('detailModalLabel').textContent = this.dataset.title;
+            document.getElementById('detailModalUrl').href = this.dataset.url;
+            document.getElementById('detailModalBody').textContent = this.dataset.text;
+            detailModal.show();
+        });
+    });
+
+    /* --- Batch Fetch --- */
+    (function() {
+        var startInput  = document.getElementById('batchStart');
+        var endInput    = document.getElementById('batchEnd');
+        var startBtn    = document.getElementById('batchStartBtn');
+        var cancelBtn   = document.getElementById('batchCancelBtn');
+        var closeBtn    = document.getElementById('batchCloseBtn');
+        var statusDiv   = document.getElementById('batchStatus');
+        var progressBar = document.getElementById('batchProgressBar');
+        var progressLbl = document.getElementById('batchProgressLabel');
+        var counterBadge= document.getElementById('batchCounter');
+        var logDiv      = document.getElementById('batchLog');
+        var timerId     = null;
+        var cancelled   = false;
+
+        function dateDiff(start, end) {
+            var s = new Date(start), e = new Date(end);
+            return Math.round((e - s) / 86400000) + 1;
+        }
+
+        function addDays(dateStr, n) {
+            var d = new Date(dateStr);
+            d.setDate(d.getDate() + n);
+            return d.toISOString().slice(0, 10);
+        }
+
+        function now() {
+            return new Date().toLocaleTimeString('tr-TR');
+        }
+
+        function logMsg(msg, type) {
+            var cls = type === 'ok' ? 'text-success' : type === 'err' ? 'text-danger' : type === 'warn' ? 'text-warning' : '';
+            logDiv.innerHTML += '<div class="' + cls + '">[' + now() + '] ' + msg + '</div>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function setProgress(current, total) {
+            var pct = Math.round((current / total) * 100);
+            progressBar.style.width = pct + '%';
+            progressBar.textContent = pct + '%';
+            counterBadge.textContent = current + ' / ' + total;
+        }
+
+        function setRunning(running) {
+            startInput.disabled = running;
+            endInput.disabled = running;
+            startBtn.disabled = running;
+            closeBtn.disabled = running;
+            if (running) {
+                startBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Çalışıyor...';
+                cancelBtn.textContent = 'Durdur';
+                cancelBtn.classList.replace('btn-secondary', 'btn-danger');
+            } else {
+                startBtn.innerHTML = '<i class="bi bi-play-fill"></i> Başlat';
+                cancelBtn.textContent = 'Kapat';
+                cancelBtn.classList.replace('btn-danger', 'btn-secondary');
+                closeBtn.disabled = false;
+            }
+        }
+
+        cancelBtn.addEventListener('click', function() {
+            if (timerId) {
+                cancelled = true;
+                clearTimeout(timerId);
+                timerId = null;
+                logMsg('Kullanıcı tarafından durduruldu.', 'warn');
+                setRunning(false);
+            }
+        });
+
+        startBtn.addEventListener('click', function() {
+            var startDate = startInput.value;
+            var endDate   = endInput.value;
+            if (!startDate || !endDate) { alert('Lütfen başlangıç ve bitiş tarihi seçin.'); return; }
+            if (startDate > endDate) { alert('Başlangıç tarihi bitiş tarihinden büyük olamaz.'); return; }
+
+            var totalDays = dateDiff(startDate, endDate);
+            if (totalDays > 90) { alert('En fazla 90 günlük aralık seçebilirsiniz.'); return; }
+
+            cancelled = false;
+            statusDiv.style.display = 'block';
+            logDiv.innerHTML = '';
+            setProgress(0, totalDays);
+            setRunning(true);
+            progressLbl.textContent = 'Başlatılıyor...';
+            logMsg(startDate + ' → ' + endDate + ' (' + totalDays + ' gün)', '');
+
+            var currentIndex = 0;
+
+            function fetchNext() {
+                if (cancelled || currentIndex >= totalDays) {
+                    if (!cancelled) {
+                        logMsg('Tüm günler tamamlandı!', 'ok');
+                        progressLbl.textContent = 'Tamamlandı!';
+                        progressBar.classList.remove('progress-bar-animated');
+                        progressBar.classList.replace('bg-primary', 'bg-success');
+                    }
+                    setRunning(false);
+                    timerId = null;
+                    return;
+                }
+
+                var dateStr = addDays(startDate, currentIndex);
+                progressLbl.textContent = dateStr + ' çekiliyor...';
+                logMsg(dateStr + ' gönderiliyor...', '');
+
+                var formData = new FormData();
+                formData.append('date', dateStr);
+
+                fetch('/fetch', { method: 'POST', body: formData, redirect: 'follow' })
+                    .then(function() {
+                        logMsg(dateStr + ' → istek gönderildi', 'ok');
+                    })
+                    .catch(function(err) {
+                        logMsg(dateStr + ' → hata: ' + err, 'err');
+                    })
+                    .finally(function() {
+                        currentIndex++;
+                        setProgress(currentIndex, totalDays);
+
+                        if (currentIndex < totalDays && !cancelled) {
+                            var remaining = totalDays - currentIndex;
+                            progressLbl.textContent = 'Sonraki gün için 60sn bekleniyor... (' + remaining + ' gün kaldı)';
+                            timerId = setTimeout(fetchNext, 60000);
+                        } else {
+                            fetchNext();
+                        }
+                    });
+            }
+
+            fetchNext();
+        });
+
+        /* Reset modal state when closed */
+        document.getElementById('batchModal').addEventListener('hidden.bs.modal', function() {
+            if (!timerId) {
+                statusDiv.style.display = 'none';
+                logDiv.innerHTML = '';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.classList.add('progress-bar-animated');
+                progressBar.classList.replace('bg-success', 'bg-primary');
+                counterBadge.textContent = '0 / 0';
+                progressLbl.textContent = '';
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

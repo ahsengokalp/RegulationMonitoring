@@ -285,7 +285,7 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
             dept_map.setdefault(hit_item.url, set()).add(dept_name)
 
     try:
-        save_items(day, items, dept_map=dept_map)
+        save_items(day, items, dept_map=dept_map, text_map=text_cache)
         save_run_log(day, len(items))
     except Exception:
         print("[WARN] Failed to save items to database")

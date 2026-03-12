@@ -96,10 +96,11 @@ Aşağıdaki Resmî Gazete içeriği bir fabrikada hangi departmanları etkiler?
 Departmanlar: ISG, IK, MUHASEBE, LOJISTIK, IT_SIBER, KVKK
 
 Ön kapı sorusu (zorunlu):
-"Bu düzenleme özel sektör üretim işletmelerinin yükümlülüklerini değiştiriyor mu?"
+"Bu düzenleme özel sektör işletmelerini (yükümlülük, standart, yeterlilik, uygulama, bilgilendirme) açısından etkiliyor mu?"
 - Önce bu soruyu cevapla.
 - Cevap HAYIR ise departmanların tamamı false olmalı (isg=false, ik=false, muhasebe=false, lojistik=false, it_siber=false, kvkk=false).
 - Cevap EVET ise departmanları ayrı ayrı değerlendir.
+- ÖNEMLİ: Ulusal meslek standardı, mesleki yeterlilik, sertifikasyon gibi düzenlemeler ilgili departmanı ETKİLER (EVET). Örneğin yazılım geliştirici meslek standardı IT_SIBER'i etkiler.
 
 Kritik kural:
 Başlık ipucu olabilir ama nihai kararı metindeki uygulanabilir yükümlülük/değişiklik/sorumluluk üzerinden ver.
@@ -127,7 +128,7 @@ Bu kelimeler yoksa LOJISTIK=false.
 
 IT_SIBER guard:
 IT_SIBER=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
-siber, bilgi güvenliği, bilişim, BTK, SOME, elektronik haberleşme, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001.
+siber, bilgi güvenliği, bilişim, BTK, SOME, elektronik haberleşme, yapay zeka, kripto, dijital dönüşüm, veri merkezi, e-imza, ISO 27001, yazılım, yazılım geliştirici, bilgi teknolojileri, IT, bilgisayar, ağ güvenliği, veri tabanı, programlama, mobil uygulama, web geliştirme, sistem yönetimi, bulut bilişim.
 Bu kelimeler yoksa IT_SIBER=false.
 
 KVKK guard:

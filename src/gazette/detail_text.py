@@ -34,7 +34,39 @@ def fetch_detail_text(session: requests.Session, url: str, timeout_s: int = 40) 
         return (text or "").strip()
 
     html = _download_text(session, url, timeout_s)
-    return _extract_text_from_html(html)
+    page_text = _extract_text_from_html(html)
+
+    # Also follow PDF links embedded in the detail page (e.g. "EKLER" attachments)
+    pdf_links = _extract_pdf_links(html, url)
+    for pdf_url in pdf_links[:3]:  # limit to first 3 PDFs
+        try:
+            pdf_bytes = _download_bytes(session, pdf_url, timeout_s)
+            pdf_text = _extract_pdf_text_with_ocr(pdf_bytes, dpi=250)
+            if not _looks_like_real_text(pdf_text) and PdfReader is not None:
+                pdf_text = _extract_pdf_text_with_pypdf(pdf_bytes)
+            pdf_text = (pdf_text or "").strip()
+            if pdf_text and _looks_like_real_text(pdf_text):
+                page_text += "\n\n--- EK PDF ---\n" + pdf_text
+        except Exception:
+            continue
+
+    # Mark that PDF attachments exist even if text extraction failed
+    if pdf_links and "--- EK PDF ---" not in page_text:
+        ek_names = [link.rsplit("/", 1)[-1] for link in pdf_links]
+        page_text += "\n\n--- EK PDF (metin çıkarılamadı) ---\n" + "\n".join(ek_names)
+
+    return page_text
+
+
+def has_pdf_attachment(session: requests.Session, url: str, timeout_s: int = 40) -> bool:
+    """Check if a detail page contains PDF links (for is_pdf detection)."""
+    if url.lower().endswith(".pdf"):
+        return True
+    try:
+        html = _download_text(session, url, timeout_s)
+        return len(_extract_pdf_links(html, url)) > 0
+    except Exception:
+        return False
 
 
 def _download_bytes(session: requests.Session, url: str, timeout_s: int) -> bytes:
@@ -46,7 +78,24 @@ def _download_bytes(session: requests.Session, url: str, timeout_s: int) -> byte
 def _download_text(session: requests.Session, url: str, timeout_s: int) -> str:
     r = session.get(url, timeout=timeout_s)
     r.raise_for_status()
+    # Resmi Gazete pages often use windows-1254 (Turkish) encoding
+    # but declare it incorrectly or not at all, causing garbled text.
+    # Try apparent_encoding first, then force common Turkish encodings.
+    if r.encoding and r.encoding.lower() in ("iso-8859-1", "ascii"):
+        r.encoding = r.apparent_encoding or "windows-1254"
     return r.text
+
+
+def _extract_pdf_links(html: str, base_url: str) -> list[str]:
+    """Extract PDF links from an HTML detail page."""
+    from urllib.parse import urljoin
+    soup = BeautifulSoup(html, "html.parser")
+    links = []
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        if href.lower().endswith(".pdf"):
+            links.append(urljoin(base_url, href))
+    return links
 
 
 def _extract_text_from_html(html: str) -> str:
@@ -107,4 +156,12 @@ def _looks_like_real_text(text: str) -> bool:
     letters = sum(ch.isalpha() for ch in text)
     ratio = letters / max(len(text), 1)
     words = re.findall(r"\b\w+\b", text, flags=re.UNICODE)
-    return ratio > 0.25 and len(words) >= 12
+    if not (ratio > 0.25 and len(words) >= 12):
+        return False
+    # Check for Turkish content: garbled PDFs often lack common Turkish words
+    sample = text[:2000].lower()
+    turkish_markers = ("ve ", " bir ", " bu ", "madde", "tarih", "kanun",
+                       "yönetmelik", "tebliğ", "düzenleme", "ilgili",
+                       "için", " ile ", "olan", "hakkında")
+    hits = sum(1 for m in turkish_markers if m in sample)
+    return hits >= 2

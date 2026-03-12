@@ -30,6 +30,7 @@ def init_db() -> None:
             section     TEXT    DEFAULT '',
             subsection  TEXT    DEFAULT '',
             is_pdf      INTEGER DEFAULT 0,
+            detail_text TEXT    DEFAULT '',
             dept_muhasebe  INTEGER DEFAULT 0,
             dept_isg       INTEGER DEFAULT 0,
             dept_ik        INTEGER DEFAULT 0,
@@ -54,6 +55,10 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
     try:
+        conn.execute("ALTER TABLE items ADD COLUMN detail_text TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+    try:
         conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_items_date_url ON items(run_date, url)"
         )
@@ -67,27 +72,34 @@ def save_items(
     run_day: date,
     items: Iterable[GazetteItem],
     dept_map: Optional[Dict[str, Set[str]]] = None,
+    text_map: Optional[Dict[str, str]] = None,
 ) -> None:
     """Persist gazette items with optional department hit flags.
 
     ``dept_map`` maps item URL → set of department names that matched.
+    ``text_map`` maps item URL → fetched detail text content.
     """
     init_db()
     conn = _connect()
     now = datetime.utcnow().isoformat()
     dept_map = dept_map or {}
+    text_map = text_map or {}
 
     for it in items:
         depts = dept_map.get(it.url, set())
-        is_pdf = 1 if it.url.lower().endswith(".pdf") else 0
+        detail = text_map.get(it.url, "")
+        is_pdf = 1 if (it.url.lower().endswith(".pdf") or "--- EK PDF ---" in detail) else 0
         conn.execute(
             """
             INSERT INTO items
                 (run_date, title, url, section, subsection, is_pdf,
+                 detail_text,
                  dept_muhasebe, dept_isg, dept_ik, dept_lojistik,
                  dept_it_siber, dept_kvkk, inserted_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(run_date, url) DO UPDATE SET
+                is_pdf        = MAX(items.is_pdf, excluded.is_pdf),
+                detail_text   = CASE WHEN length(excluded.detail_text) > length(COALESCE(items.detail_text, '')) THEN excluded.detail_text ELSE items.detail_text END,
                 dept_muhasebe = excluded.dept_muhasebe,
                 dept_isg      = excluded.dept_isg,
                 dept_ik       = excluded.dept_ik,
@@ -103,6 +115,7 @@ def save_items(
                 it.section or "",
                 it.subsection or "",
                 is_pdf,
+                detail,
                 1 if "muhasebe" in depts else 0,
                 1 if "isg" in depts else 0,
                 1 if "ik" in depts else 0,
@@ -137,8 +150,8 @@ def get_items(limit: int = 100, search: Optional[str] = None, dept: Optional[str
 
     if search:
         like = f"%{search}%"
-        conditions.append("(title LIKE ? OR section LIKE ? OR subsection LIKE ?)")
-        params.extend([like, like, like])
+        conditions.append("(title LIKE ? OR section LIKE ? OR subsection LIKE ? OR detail_text LIKE ?)")
+        params.extend([like, like, like, like])
 
     if dept and dept in valid_depts:
         conditions.append(f"dept_{dept} = 1")
