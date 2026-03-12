@@ -428,12 +428,22 @@
                 var formData = new FormData();
                 formData.append('date', dateStr);
 
-                fetch('/fetch', { method: 'POST', body: formData, redirect: 'follow' })
-                    .then(function() {
-                        logMsg(dateStr + ' → istek gönderildi', 'ok');
+                fetch('/fetch', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    redirect: 'manual'
+                })
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        if (data.ok) {
+                            logMsg(dateStr + ' → ' + (data.items_found || 0) + ' kayıt bulundu', 'ok');
+                        } else {
+                            logMsg(dateStr + ' → hata: ' + (data.error || 'bilinmeyen'), 'err');
+                        }
                     })
                     .catch(function(err) {
-                        logMsg(dateStr + ' → hata: ' + err, 'err');
+                        logMsg(dateStr + ' → bağlantı hatası: ' + err, 'err');
                     })
                     .finally(function() {
                         currentIndex++;
@@ -441,8 +451,8 @@
 
                         if (currentIndex < totalDays && !cancelled) {
                             var remaining = totalDays - currentIndex;
-                            progressLbl.textContent = 'Sonraki gün için 60sn bekleniyor... (' + remaining + ' gün kaldı)';
-                            timerId = setTimeout(fetchNext, 60000);
+                            progressLbl.textContent = 'Sonraki gün için 10sn bekleniyor... (' + remaining + ' gün kaldı)';
+                            timerId = setTimeout(fetchNext, 10000);
                         } else {
                             fetchNext();
                         }

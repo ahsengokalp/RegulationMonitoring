@@ -5,7 +5,7 @@ import threading
 import traceback
 from datetime import date, datetime
 
-from flask import Flask, flash, redirect, render_template, request, url_for, send_file
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for, send_file
 
 from src.db.storage import get_department_counts, get_items, get_last_check_time
 from src.app.config import get_settings
@@ -112,20 +112,50 @@ def _fetch_worker(day: date) -> None:
 
 @app.route("/fetch", methods=["POST"])
 def fetch():
+    # Check if this is an AJAX/JSON request (from batch fetch JS)
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in (request.headers.get("Accept") or "")
+    )
     date_str = request.form.get("date")
-    if date_str:
+    if not date_str:
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Tarih belirtilmedi."}), 400
+        return redirect(url_for("index"))
+
+    try:
+        day = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        if is_ajax:
+            return jsonify({"ok": False, "error": "Geçersiz tarih formatı."}), 400
+        flash("Geçersiz tarih formatı. YYYY-MM-DD kullanın.", "danger")
+        return redirect(url_for("index"))
+
+    if is_ajax:
+        # Synchronous execution for batch/AJAX requests so JS knows when it's done
         try:
-            day = datetime.strptime(date_str, "%Y-%m-%d").date()
-            thread = threading.Thread(target=_fetch_worker, args=(day,), daemon=True)
-            thread.start()
-            flash(
-                f"{date_str} tarihi için veri çekme işlemi başlatıldı. "
-                "Birkaç dakika sonra sayfayı yenileyerek sonuçları görebilirsiniz.",
-                "info",
-            )
-        except ValueError:
-            flash("Geçersiz tarih formatı. YYYY-MM-DD kullanın.", "danger")
-    return redirect(url_for("index"))
+            from src.pipeline.run_daily import default_policies, run
+
+            report = run(day=day, policies=default_policies())
+            print(f"[INFO] Fetch completed for {day.isoformat()} ({report.total_items} items)")
+            return jsonify({
+                "ok": True,
+                "date": day.isoformat(),
+                "items_found": report.total_items,
+            })
+        except Exception:
+            traceback.print_exc()
+            return jsonify({"ok": False, "error": f"{day.isoformat()} çekilirken hata oluştu."}), 500
+    else:
+        # Background execution for manual single-day fetch (form submit)
+        thread = threading.Thread(target=_fetch_worker, args=(day,), daemon=True)
+        thread.start()
+        flash(
+            f"{date_str} tarihi için veri çekme işlemi başlatıldı. "
+            "Birkaç dakika sonra sayfayı yenileyerek sonuçları görebilirsiniz.",
+            "info",
+        )
+        return redirect(url_for("index"))
 
 
 @app.route("/download-db")
