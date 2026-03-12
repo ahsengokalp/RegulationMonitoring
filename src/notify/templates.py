@@ -10,37 +10,81 @@ def build_generic_email_subject(dept: str, day: date, count: int) -> str:
     return f"[{dept.upper()}] Resmi Gazete ({day:%d.%m.%Y}) - {count} yeni kayit"
 
 
-def build_generic_email_html(dept: str, day: date, items: Sequence[GazetteItem]) -> str:
+def build_generic_email_html(
+    dept: str,
+    day: date,
+    items: Sequence[GazetteItem],
+    text_map: Mapping[str, str] | None = None,
+    evidence_map: Mapping[str, str] | None = None,
+) -> str:
     title = dept.upper()
-    rows = "\n".join(
-        f"""
+    text_map = text_map or {}
+    evidence_map = evidence_map or {}
+
+    dept_labels = {
+        "isg": "Is Sagligi ve Guvenligi",
+        "ik": "Insan Kaynaklari",
+        "muhasebe": "Muhasebe / Vergi / Finans",
+        "lojistik": "Lojistik / Dis Ticaret / Gumruk",
+        "it_siber": "IT / Siber Guvenlik",
+        "kvkk": "KVKK / Kisisel Verilerin Korunmasi",
+    }
+    dept_display = dept_labels.get(dept, dept.upper())
+
+    rows_html = []
+    for i in items:
+        evidence = evidence_map.get(i.url, "")
+        detail = text_map.get(i.url, "")
+        # Truncate detail for email (first 1000 chars)
+        detail_preview = detail[:1000].strip() if detail else ""
+        if len(detail) > 1000:
+            detail_preview += "\n... (devami icin uygulamaya bakiniz)"
+
+        evidence_block = ""
+        if evidence:
+            evidence_block = f"""
+            <div style="background:#e8f5e9;border-left:3px solid #4caf50;padding:8px 12px;margin:6px 0;font-size:13px;">
+              <b>AI Degerlendirmesi:</b> {_escape(evidence)}
+            </div>
+            """
+
+        detail_block = ""
+        if detail_preview:
+            detail_block = f"""
+            <div style="background:#f5f5f5;border:1px solid #e0e0e0;padding:10px;margin:6px 0;font-size:12px;white-space:pre-wrap;max-height:300px;overflow:hidden;">
+              {_escape(detail_preview)}
+            </div>
+            """
+
+        rows_html.append(f"""
         <tr>
-          <td style="padding:10px;border-bottom:1px solid #eee;">
-            <div style="font-weight:600;">{_escape(i.title)}</div>
-            <div><a href="{i.url}">{i.url}</a></div>
-            <div style="color:#666;font-size:12px;margin-top:4px;">
+          <td style="padding:12px;border-bottom:2px solid #e0e0e0;">
+            <div style="font-weight:600;font-size:15px;">{_escape(i.title)}</div>
+            <div style="margin:4px 0;"><a href="{i.url}" style="color:#1a73e8;">{i.url}</a></div>
+            <div style="color:#666;font-size:12px;">
               {_escape(i.section or '')} {(' / ' + _escape(i.subsection)) if i.subsection else ''}
             </div>
+            {evidence_block}
+            {detail_block}
           </td>
         </tr>
-        """
-        for i in items
-    )
+        """)
 
     return f"""
     <div style="font-family:Arial, sans-serif; max-width:700px;">
-      <h2 style="margin:0 0 12px 0;">{title} icin Resmi Gazete Bildirimi</h2>
-      <div style="color:#444;margin-bottom:12px;">
-        Tarih: <b>{day:%d.%m.%Y}</b><br/>
+      <h2 style="margin:0 0 12px 0; color:#1a237e;">{dept_display}</h2>
+      <h3 style="margin:0 0 12px 0; color:#333;">Resmi Gazete Bildirimi</h3>
+      <div style="color:#444;margin-bottom:16px;padding:10px;background:#e3f2fd;border-radius:6px;">
+        Tarih: <b>{day:%d.%m.%Y}</b> &nbsp;|&nbsp;
         Bulunan kayit: <b>{len(items)}</b>
       </div>
 
-      <table style="width:100%; border-collapse:collapse; border:1px solid #eee;">
-        {rows}
+      <table style="width:100%; border-collapse:collapse; border:1px solid #e0e0e0;">
+        {"".join(rows_html)}
       </table>
 
-      <p style="color:#666;font-size:12px;margin-top:12px;">
-        Not: Bu ilk versiyonda sadece basliga gore filtreleme yapilmistir.
+      <p style="color:#999;font-size:11px;margin-top:16px;">
+        Bu e-posta Regulasyon Takip Sistemi tarafindan otomatik olarak gonderilmistir.
       </p>
     </div>
     """

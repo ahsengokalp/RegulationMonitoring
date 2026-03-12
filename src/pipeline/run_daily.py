@@ -316,6 +316,7 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
             continue
 
         hit_items = [item for item, _ in hits]
+        evidence_map = {item.url: md.evidence for item, md in hits if md.evidence}
         sample_titles = tuple(item.title for item in hit_items[:5])
         subject = build_generic_email_subject(dept, day, len(hit_items))
         recipients = recipients_map.get(dept, [])
@@ -334,7 +335,11 @@ def run(day: date, policies: List[DepartmentPolicy]) -> RunReport:
             )
             continue
 
-        html_body = build_generic_email_html(dept, day, hit_items)
+        html_body = build_generic_email_html(
+            dept, day, hit_items,
+            text_map=text_cache,
+            evidence_map=evidence_map,
+        )
 
         try:
             send_html_email(
