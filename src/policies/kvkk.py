@@ -27,6 +27,13 @@ HIGH_SIGNAL = [
     r"\bgizlilik\s*politikası\b",
     r"\bçerez\s*politikası\b",
     r"\bGDPR\b",
+    r"\bveri\s*güvenliği\b",
+    r"\bveri\s*işleme\b",
+    r"\bbiyometrik\s*veri\b",
+    r"\bözel\s*nitelikli\s*kişisel\s*veri\b",
+    r"\bkayıt\s*sistemi\b",
+    r"\belektronik\s*kimlik\b",
+    r"\bkimlik\s*doğrulama\b",
 ]
 
 MID_SIGNAL = [
@@ -35,6 +42,8 @@ MID_SIGNAL = [
     r"\byönetmelik\b",
     r"\btebliğ\b",
     r"\bkurul\s*kararı\b",
+    r"\bsicil\b",
+    r"\bkişisel\s*bilgi\b",
 ]
 
 

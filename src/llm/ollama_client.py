@@ -133,7 +133,7 @@ Bu kelimeler yoksa IT_SIBER=false.
 
 KVKK guard:
 KVKK=true demek için metinde/başlıkta şu kelimelerden en az biri açıkça geçmeli:
-KVKK, 6698, kişisel veri, veri sorumlusu, veri işleyen, açık rıza, aydınlatma, veri ihlali, veri koruma, anonimleştirme.
+KVKK, 6698, kişisel veri, kişisel verilerin korunması, veri sorumlusu, veri işleyen, açık rıza, aydınlatma yükümlülüğü, veri ihlali, veri koruma, anonimleştirme, veri güvenliği, veri işleme, gizlilik politikası, çerez politikası, mahremiyet, biyometrik veri, özel nitelikli kişisel veri, sicil, kayıt sistemi, GDPR, Kişisel Verileri Koruma Kurumu, Kişisel Verileri Koruma Kurulu, veri aktarımı, veri silme, veri yok etme, e-Devlet, kimlik doğrulama, elektronik kimlik, kişisel bilgi, gizlilik, veri tabanı güvenliği.
 Bu kelimeler yoksa KVKK=false.
 
 Not: "dış ticaret" ve "ihracat/ithalat" konuları IK değil, LOJISTIK kapsamındadır.
